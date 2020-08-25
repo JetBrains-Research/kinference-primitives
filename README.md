@@ -1,31 +1,6 @@
-# ki/kotlin-primitive-generator
+# KInference Primitives
 
+KInference primitives is a library that makes possible generation of primitive versions for generic types.
 
-
-## Getting Started
-
-Download links:
-
-SSH clone URL: ssh://git@git.jetbrains.team/ki/kotlin-primitive-generator.git
-
-HTTPS clone URL: https://git.jetbrains.team/ki/kotlin-primitive-generator.git
-
-
-
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
-
-## Prerequisites
-
-What things you need to install the software and how to install them.
-
-```
-Examples
-```
-
-## Deployment
-
-Add additional notes about how to deploy this on a production system.
-
-## Resources
-
-Add links to external resources for this project, such as CI server, bug tracker, etc.
+For example, you can write `Array<T>` and automatically generate `IntArray`, `ByteArray` and other primitive versions of
+this generic type.
