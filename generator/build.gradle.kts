@@ -30,6 +30,7 @@ publishPlugin {
     info {
         description = "KInference Primitives Generator"
         website = "https://github.com/JetBrains-Research/kinference-primitives"
+        vcsUrl = "https://github.com/JetBrains-Research/kinference-primitives"
         tags.addAll(listOf("kotlin", "primitive", "performance", "generation"))
     }
 }
