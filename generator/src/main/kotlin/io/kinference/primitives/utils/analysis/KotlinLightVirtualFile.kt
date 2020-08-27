@@ -1,4 +1,4 @@
-package io.kinference.primitives
+package io.kinference.primitives.utils.analysis
 
 import org.jetbrains.kotlin.com.intellij.testFramework.LightVirtualFile
 import org.jetbrains.kotlin.idea.KotlinLanguage

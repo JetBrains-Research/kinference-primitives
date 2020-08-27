@@ -1,5 +1,6 @@
 package io.kinference.primitives.types
 
+@Suppress("unused", "UNUSED_PARAMETER")
 class PrimitiveType {
     companion object {
         val MIN_VALUE: PrimitiveType = PrimitiveType()
@@ -29,4 +30,5 @@ class PrimitiveType {
     fun toPrimitive(): PrimitiveType = throw UnsupportedOperationException()
 }
 
+@Suppress("unused")
 fun Number.toPrimitive(): PrimitiveType = throw UnsupportedOperationException()

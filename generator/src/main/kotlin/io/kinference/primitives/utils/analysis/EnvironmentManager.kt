@@ -1,4 +1,4 @@
-package io.kinference.primitives
+package io.kinference.primitives.utils.analysis
 
 import org.jetbrains.kotlin.cli.common.CLIConfigurationKeys
 import org.jetbrains.kotlin.cli.common.environment.setIdeaIoUseFallback

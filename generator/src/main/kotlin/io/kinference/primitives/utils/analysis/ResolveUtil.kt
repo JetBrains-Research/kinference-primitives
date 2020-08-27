@@ -1,4 +1,4 @@
-package io.kinference.primitives
+package io.kinference.primitives.utils.analysis
 
 import org.jetbrains.kotlin.analyzer.AnalysisResult
 import org.jetbrains.kotlin.cli.jvm.compiler.CliBindingTrace
@@ -24,7 +24,7 @@ object ResolveUtil {
     private fun analyze(project: Project, files: Collection<KtFile>, configuration: CompilerConfiguration,
                         factory: (GlobalSearchScope) -> PackagePartProvider, trace: BindingTrace = CliBindingTrace()): AnalysisResult {
         return TopDownAnalyzerFacadeForJVM.analyzeFilesWithJavaIntegration(
-            project, files, trace, configuration, factory
+                project, files, trace, configuration, factory
         )
     }
 }

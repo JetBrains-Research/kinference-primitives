@@ -1,4 +1,4 @@
-package io.kinference.primitives
+package io.kinference.primitives.utils.analysis
 
 import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
 import org.jetbrains.kotlin.com.intellij.openapi.vfs.CharsetToolkit

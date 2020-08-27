@@ -1,8 +1,7 @@
-@file:Suppress("UNUSED_PARAMETER")
-
 package io.kinference.primitives.types
 
 
+@Suppress("unused", "UNUSED_PARAMETER", "MemberVisibilityCanBePrivate")
 class PrimitiveArray(val size: Int) {
     constructor(size: Int, init: (Int) -> Any) : this(size)
 
