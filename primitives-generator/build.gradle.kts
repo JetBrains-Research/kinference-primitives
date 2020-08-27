@@ -10,7 +10,7 @@ dependencies {
 
     implementation(kotlin("gradle-plugin-api"))
 
-    implementation(project(":annotations"))
+    implementation(project(":primitives-annotations"))
 
     implementation("com.squareup", "kotlinpoet", "1.6.0")
 }
