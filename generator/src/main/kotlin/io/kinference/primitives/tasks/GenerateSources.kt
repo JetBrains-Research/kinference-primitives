@@ -1,8 +1,8 @@
 package io.kinference.primitives.tasks
 
-import io.kinference.primitives.PrimitivesPluginExtension
 import io.kinference.primitives.annotations.GenerateWithPrimitives
 import io.kinference.primitives.annotations.PrimitiveClass
+import io.kinference.primitives.primitives
 import io.kinference.primitives.types.DataType
 import io.kinference.primitives.types.PrimitiveArray
 import io.kinference.primitives.types.PrimitiveType
@@ -16,25 +16,35 @@ import io.kinference.primitives.utils.psi.isAnnotatedWith
 import io.kinference.primitives.utils.psi.isAnnotation
 import io.kinference.primitives.utils.psi.qualifiedName
 import org.gradle.api.DefaultTask
-import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.*
 import org.jetbrains.kotlin.com.intellij.psi.impl.source.tree.LeafPsiElement
 import org.jetbrains.kotlin.lexer.KtTokens.IDENTIFIER
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtClass
+import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtSimpleNameExpression
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
 import java.io.File
 
+@CacheableTask
 @ExperimentalUnsignedTypes
 open class GenerateSources : DefaultTask() {
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    val myAllSources: Set<File>
+        get() = project.myKtSourceSet.toSet()
+
+    @get:Input
+    val generationPath: File?
+        get() = primitives.generationPath
+
     @TaskAction
     fun act() {
-        val sources = project.myKtSourceSet
         val classpath = project.configurations.getByName("compileClasspath").files
 
         val manager = EnvironmentManager.create(classpath)
-        val ktFiles = ParseUtil.analyze(sources, manager)
+        val ktFiles = ParseUtil.analyze(myAllSources, manager)
         val context = ResolveUtil.analyze(ktFiles, manager).bindingContext
 
         val primitives = mapOf(
@@ -55,14 +65,7 @@ open class GenerateSources : DefaultTask() {
         for (file in ktFiles) {
             if (!file.isAnnotatedWith<GenerateWithPrimitives>(context)) continue
 
-            val classes = HashSet<KtClass>()
-            file.accept(object : KtDefaultVisitor() {
-                override fun visitClass(klass: KtClass) {
-                    if (klass.isAnnotatedWith<PrimitiveClass>(context)) {
-                        classes.add(klass)
-                    }
-                }
-            })
+            val classes = file.collectClasses(context)
 
             for ((primitive, builder) in primitives) {
                 val replacements = HashMap<String, String>().apply {
@@ -120,16 +123,27 @@ open class GenerateSources : DefaultTask() {
                     }
                 })
 
-                val path = (project.extensions.getByName("primitives") as PrimitivesPluginExtension).generationPath
+                val genDir = generationPath ?: project.file("src/main/kotlin-gen")
 
-                with(File("${project.projectDir}/$path/${file.packageFqName.asString().replace('.', '/')}/" + file.name.replace("Primitive", primitive.typeName!!))) {
+                with(File(genDir, "${file.packageFqName.asString().replace('.', '/')}/${file.name.replace("Primitive", primitive.typeName!!)}")) {
                     parentFile.mkdirs()
-                    createNewFile()
                     writeText(builder.toString())
                 }
 
                 builder.clear()
             }
         }
+    }
+
+    private fun KtFile.collectClasses(context: BindingContext): Set<KtClass> {
+        val classes = HashSet<KtClass>()
+        accept(object : KtDefaultVisitor() {
+            override fun visitClass(klass: KtClass) {
+                if (klass.isAnnotatedWith<PrimitiveClass>(context)) {
+                    classes.add(klass)
+                }
+            }
+        })
+        return classes
     }
 }
