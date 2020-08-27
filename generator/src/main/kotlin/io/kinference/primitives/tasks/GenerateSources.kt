@@ -35,7 +35,7 @@ open class GenerateSources : DefaultTask() {
     val myAllSources: Set<File>
         get() = project.myKtSourceSet.toSet()
 
-    @get:Input
+    @get:OutputDirectory
     val generationPath: File?
         get() = primitives.generationPath
 
