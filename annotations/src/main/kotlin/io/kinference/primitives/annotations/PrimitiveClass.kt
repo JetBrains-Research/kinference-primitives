@@ -1,5 +1,5 @@
 package io.kinference.primitives.annotations
 
-@Target(AnnotationTarget.FILE)
+@Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
-annotation class GenerateWithPrimitives
+annotation class PrimitiveClass

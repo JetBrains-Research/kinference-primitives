@@ -1,6 +1,9 @@
 package io.kinference.primitives
 
 import io.kinference.primitives.annotations.*
+import io.kinference.primitives.types.DataType
+import io.kinference.primitives.types.PrimitiveArray
+import io.kinference.primitives.types.PrimitiveType
 import org.gradle.api.DefaultTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
