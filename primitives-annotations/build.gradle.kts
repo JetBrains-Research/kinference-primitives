@@ -8,9 +8,6 @@ dependencies {
 }
 
 publishJar {
-    publication {
-        artifactId = "primitives-annotations"
-    }
     bintray {
         username = "tanvd"
         repository = "io.kinference"

@@ -1,7 +1,7 @@
 rootProject.name = "kinference-primitives"
 
-include(":annotations")
-include(":generator")
+include(":primitives-annotations")
+include(":primitives-generator")
 
 pluginManagement {
     repositories {
