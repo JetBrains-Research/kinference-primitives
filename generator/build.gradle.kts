@@ -22,7 +22,7 @@ publishJar {
 }
 
 publishPlugin {
-    id = "io.kinference"
+    id = "io.kinference.primitives"
     displayName = "primitives"
     implementationClass = "io.kinference.primitives.PrimitivesKotlinGradlePlugin"
     version = project.version.toString()

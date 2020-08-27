@@ -15,7 +15,10 @@ publishJar {
         username = "tanvd"
         repository = "io.kinference"
         info {
-            description = "KInference Primitives"
+            description = "KInference Primitives Annotations"
+            githubRepo = "JetBrains-Research/kinference-primitives"
+            vcsUrl = "https://github.com/JetBrains-Research/kinference-primitives"
+            labels.addAll(listOf("kotlin", "primitives", "generation"))
         }
     }
 }
