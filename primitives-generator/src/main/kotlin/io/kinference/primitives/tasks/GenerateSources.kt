@@ -72,7 +72,7 @@ open class GenerateSources : DefaultTask() {
                     put(DataType::class.qualifiedName!! + ".${DataType.UNKNOWN.name}", primitive.dataType.name)
 
                     put(PrimitiveType::class.qualifiedName!! + ".toPrimitive", "to${primitive.typeName}")
-                    put("org.jetbrains.research.kotlin.inference.annotations.toPrimitive", "to${primitive.typeName}")
+                    put(PrimitiveType::class.java.`package`.name + ".toPrimitive", "to${primitive.typeName}")
 
                     put(PrimitiveType::class.qualifiedName!!, primitive.typeName!!)
                     put(PrimitiveType::class.qualifiedName!! + ".<init>", primitive.typeName)
