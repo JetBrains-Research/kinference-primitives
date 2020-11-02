@@ -17,7 +17,7 @@ dependencies {
 
 publishJar {
     publication {
-        artifactId = "io.kinference.primitives"
+        artifactId = "io.kinference.primitives.gradle.plugin"
     }
 }
 
