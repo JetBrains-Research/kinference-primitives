@@ -1,8 +1,6 @@
 package io.kinference.primitives.tasks
 
 import io.kinference.primitives.types.DataType
-import org.gradle.internal.impldep.com.google.api.client.util.Data
-import java.lang.IllegalStateException
 import java.util.*
 import kotlin.reflect.KClass
 
@@ -30,6 +28,8 @@ class Primitive<Type : Any, ArrayType : Any>(val dataType: DataType, type: KClas
 
             create<Float, FloatArray>(DataType.FLOAT)
             create<Double, DoubleArray>(DataType.DOUBLE)
+
+            create<Boolean, BooleanArray>(DataType.BOOLEAN)
         }
 
         fun all() = ALL.values

@@ -79,6 +79,7 @@ open class GenerateSources : DefaultTask() {
         for (file in primitiveFiles) {
             for (primitive in Primitive.all()) {
                 val builder = StringBuilder()
+                var isNotEmptyFile = false
 
                 file.accept(object : KtDefaultVisitor() {
                     private var currentPrimitive = primitive
@@ -105,7 +106,13 @@ open class GenerateSources : DefaultTask() {
                                 isAnnotation<PrimitiveBinding>(context) ||
                                 isAnnotation<Type1>(context) ||
                                 isAnnotation<Type2>(context) ||
-                                isAnnotation<Type3>(context)
+                                isAnnotation<Type3>(context) ||
+                                isAnnotation<Exclude>(context)
+                    }
+
+                    private fun KtAnnotationEntry.getTypes(type: String): List<DataType> {
+                        return (this.getValue<List<EnumValue>>(context, type) ?: emptyList())
+                            .map { DataType.valueOf(it.enumEntryName.asString()) }
                     }
 
                     override fun visitAnnotationEntry(annotationEntry: KtAnnotationEntry) {
@@ -139,11 +146,7 @@ open class GenerateSources : DefaultTask() {
                     }
 
                     override fun visitNamedFunction(function: KtNamedFunction) {
-                        fun KtAnnotationEntry.getTypes(type: String): List<DataType> {
-                            return (this.getValue<List<EnumValue>>(context, type) ?: emptyList())
-                                .map { DataType.valueOf(it.enumEntryName.asString()) }
-                        }
-
+                        val excludes = function.annotationEntries.lastOrNull { it.isAnnotation<Exclude>(context) }?.getTypes("types") ?: emptyList()
                         if (function.isAnnotatedWith<PrimitiveBinding>(context)) {
                             for (annotation in function.annotationEntries.filter { it.isAnnotation<PrimitiveBinding>(context) }) {
                                 val types1 = annotation.getTypes("type1")
@@ -164,7 +167,10 @@ open class GenerateSources : DefaultTask() {
                                     builder.append('\n')
                                 }
                             }
-                        } else super.visitNamedFunction(function)
+                        } else if (!excludes.contains(primitive.dataType)) {
+                            isNotEmptyFile = true
+                            super.visitNamedFunction(function)
+                        }
                     }
 
                     override fun visitTypeReference(typeReference: KtTypeReference) {
@@ -181,6 +187,16 @@ open class GenerateSources : DefaultTask() {
                             else -> super.visitTypeReference(typeReference)
                         }
                     }
+
+                    override fun visitClass(klass: KtClass) {
+                        val excludes = klass.annotationEntries.lastOrNull { it.isAnnotation<Exclude>(context) }?.getTypes("types") ?: emptyList()
+
+                        if (!excludes.contains(currentPrimitive.dataType)) {
+                            isNotEmptyFile = true
+                            super.visitClass(klass)
+                        }
+                    }
+
 
                     override fun visitAnnotatedExpression(expression: KtAnnotatedExpression) {
                         when {
@@ -209,10 +225,11 @@ open class GenerateSources : DefaultTask() {
                     }
                 })
 
-                with(File(genDir,"${file.packageFqName.asString().replace('.', '/')}/${file.name.replace("Primitive", primitive.typeName)}")) {
-                    parentFile.mkdirs()
-                    writeText(builder.toString())
-                }
+                if (isNotEmptyFile)
+                    with(File(genDir,"${file.packageFqName.asString().replace('.', '/')}/${file.name.replace("Primitive", primitive.typeName)}")) {
+                        parentFile.mkdirs()
+                        writeText(builder.toString())
+                    }
             }
         }
     }

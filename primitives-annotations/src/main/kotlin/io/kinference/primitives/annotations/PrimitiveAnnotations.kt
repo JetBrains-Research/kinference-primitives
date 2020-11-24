@@ -30,3 +30,9 @@ annotation class Type2
 @Target(AnnotationTarget.TYPE, AnnotationTarget.EXPRESSION)
 @Retention(AnnotationRetention.SOURCE)
 annotation class Type3
+
+@Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS)
+@Retention(AnnotationRetention.SOURCE)
+annotation class Exclude(
+    val types: Array<DataType> = []
+)
