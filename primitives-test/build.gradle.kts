@@ -1,7 +1,7 @@
 import io.kinference.primitives.primitives
 
 plugins {
-    kotlin("jvm") version "1.3.72"
+    kotlin("jvm") version "1.4.20"
     id("io.kinference.primitives") version "0.1.2"
 }
 
