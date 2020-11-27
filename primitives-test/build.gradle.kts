@@ -1,24 +1,35 @@
-import io.kinference.primitives.primitives
+import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompile
+
+group = rootProject.group
+version = rootProject.version
 
 plugins {
-    kotlin("jvm") version "1.4.20"
-    id("io.kinference.primitives") version "0.1.2"
-}
-
-group = "io.kinference.primitives"
-version = "0.1.2"
-
-repositories {
-    mavenLocal()
-    jcenter()
-}
-
-primitives {
-    generationPath = file("src/main/kotlin-gen")
+    idea
 }
 
 dependencies {
     implementation(kotlin("stdlib"))
-    compileOnly("io.kinference.primitives","io.kinference.primitives.gradle.plugin","0.1.2")
-    api("io.kinference.primitives","primitives-annotations","0.1.2")
+    kotlinCompilerPluginClasspath(project(":primitives-plugin:kotlin-plugin"))
+    implementation(project(":primitives-annotations"))
+}
+
+val generatedDir = "$projectDir/src/main/kotlin-gen"
+
+tasks.withType<KotlinJvmCompile> {
+    kotlinOptions {
+        freeCompilerArgs = freeCompilerArgs + listOf(
+            "-P",
+            "plugin:io.kinference.primitives:outputDir=$generatedDir"
+        )
+    }
+}
+
+idea {
+    module.generatedSourceDirs.plusAssign(files(generatedDir))
+}
+
+kotlin {
+    sourceSets["main"].apply {
+        kotlin.srcDirs("src/main/kotlin-gen")
+    }
 }
