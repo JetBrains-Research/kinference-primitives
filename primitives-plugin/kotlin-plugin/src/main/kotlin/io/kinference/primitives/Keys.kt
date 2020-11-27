@@ -6,4 +6,5 @@ import java.io.File
 
 object Keys {
     val OUTPUT_DIR = CompilerConfigurationKey.create<File>("$PLUGIN_ID.outputDir")
+    val INCREMENTAL_DIR = CompilerConfigurationKey.create<File>("$PLUGIN_ID.icOutputDir")
 }

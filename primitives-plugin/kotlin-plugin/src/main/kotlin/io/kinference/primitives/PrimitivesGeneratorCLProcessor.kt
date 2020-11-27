@@ -10,16 +10,16 @@ import java.io.File
 @AutoService(CommandLineProcessor::class)
 class PrimitivesGeneratorCLProcessor : CommandLineProcessor {
     override val pluginId: String = PLUGIN_ID
-    override val pluginOptions: Collection<AbstractCliOption> = listOf(OUTPUT_DIR_OPTION)
+    override val pluginOptions: Collection<AbstractCliOption> = listOf(OUTPUT_DIR_OPTION, INCREMENTAL_DIR_OPTION)
 
     override fun processOption(option: AbstractCliOption, value: String, configuration: CompilerConfiguration) {
         when (option) {
             OUTPUT_DIR_OPTION ->  configuration.put(Keys.OUTPUT_DIR, File(value))
+            INCREMENTAL_DIR_OPTION -> configuration.put(Keys.INCREMENTAL_DIR, File(value))
         }
     }
 
     companion object {
-        const val DEFAULT_DIR = "src/main/kotlin-gen"
         const val PLUGIN_ID = "io.kinference.primitives"
 
         val OUTPUT_DIR_OPTION =
@@ -27,6 +27,15 @@ class PrimitivesGeneratorCLProcessor : CommandLineProcessor {
                 optionName = "outputDir",
                 valueDescription = "<path>",
                 description = "Resulting generated files",
+                required = true,
+                allowMultipleOccurrences = false
+            )
+
+        val INCREMENTAL_DIR_OPTION =
+            CliOption(
+                optionName = "icOutputDir",
+                valueDescription = "<path>",
+                description = "Temporary data for ic compilation",
                 required = false,
                 allowMultipleOccurrences = false
             )

@@ -14,12 +14,15 @@ dependencies {
 }
 
 val generatedDir = "$projectDir/src/main/kotlin-gen"
+val incrementalDir = "$buildDir/"
 
 tasks.withType<KotlinJvmCompile> {
     kotlinOptions {
         freeCompilerArgs = freeCompilerArgs + listOf(
             "-P",
-            "plugin:io.kinference.primitives:outputDir=$generatedDir"
+            "plugin:io.kinference.primitives:outputDir=$generatedDir",
+            "-P",
+            "plugin:io.kinference.primitives:icOutputDir=$incrementalDir"
         )
     }
 }
@@ -30,6 +33,6 @@ idea {
 
 kotlin {
     sourceSets["main"].apply {
-        kotlin.srcDirs("src/main/kotlin-gen")
+        kotlin.srcDirs(generatedDir)
     }
 }
