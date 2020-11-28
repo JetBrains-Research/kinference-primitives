@@ -5,14 +5,13 @@ import java.util.*
 import kotlin.reflect.KClass
 
 
-@ExperimentalUnsignedTypes
 class Primitive<Type : Any, ArrayType : Any>(val dataType: DataType, type: KClass<Type>, arrayType: KClass<ArrayType>) {
     companion object {
-        private val ALL: MutableMap<DataType, Primitive<*, *>> = EnumMap(DataType::class.java)
+        private val ALL = EnumMap<DataType, Primitive<*, *>>(DataType::class.java)
 
-        private inline fun <reified Type : Any, reified ArrayType : Any> create(dataType: DataType): Primitive<Type, ArrayType> {
-            require(!ALL.contains(dataType)) { "DataType already registered" }
-            return Primitive(dataType, Type::class, ArrayType::class).apply { ALL[dataType] = this }
+        private inline fun <reified Type : Any, reified ArrayType : Any> create(type: DataType): Primitive<Type, ArrayType> {
+            require(type !in ALL) { "DataType $type already registered" }
+            return Primitive(type, Type::class, ArrayType::class).apply { ALL[type] = this }
         }
 
         init {
@@ -33,12 +32,11 @@ class Primitive<Type : Any, ArrayType : Any>(val dataType: DataType, type: KClas
         }
 
         fun all() = ALL.values
-        fun of(type: DataType) = ALL[type] ?: throw IllegalStateException("DataType not registered")
+        fun of(type: DataType) = ALL[type] ?: error("DataType ${type} not registered")
     }
 
     val typeName = type.simpleName!!
     val arrayTypeName = arrayType.simpleName!!
 }
 
-@ExperimentalUnsignedTypes
 fun DataType.toPrimitive(): Primitive<*, *> = Primitive.of(this)

@@ -14,7 +14,7 @@ class PrimitivesGeneratorCLProcessor : CommandLineProcessor {
 
     override fun processOption(option: AbstractCliOption, value: String, configuration: CompilerConfiguration) {
         when (option) {
-            OUTPUT_DIR_OPTION ->  configuration.put(Keys.OUTPUT_DIR, File(value))
+            OUTPUT_DIR_OPTION -> configuration.put(Keys.OUTPUT_DIR, File(value))
             INCREMENTAL_DIR_OPTION -> configuration.put(Keys.INCREMENTAL_DIR, File(value))
         }
     }

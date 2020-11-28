@@ -1,11 +1,12 @@
 package io.kinference.primitives.handler
 
 import io.kinference.primitives.annotations.*
-import io.kinference.primitives.types.DataType
-import io.kinference.primitives.types.PrimitiveArray
-import io.kinference.primitives.types.PrimitiveType
+import io.kinference.primitives.ic.ICCache
+import io.kinference.primitives.types.*
+import io.kinference.primitives.utils.crossProduct
 import io.kinference.primitives.utils.psi.*
 import org.jetbrains.kotlin.analyzer.AnalysisResult
+import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.com.intellij.openapi.project.Project
 import org.jetbrains.kotlin.com.intellij.openapi.util.Key
 import org.jetbrains.kotlin.com.intellij.psi.PsiWhiteSpace
@@ -18,20 +19,23 @@ import org.jetbrains.kotlin.diagnostics.Severity
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.*
-import org.jetbrains.kotlin.resolve.BindingContext
-import org.jetbrains.kotlin.resolve.BindingTrace
-import org.jetbrains.kotlin.resolve.LazyTopDownAnalyzer
-import org.jetbrains.kotlin.resolve.TopDownAnalysisMode
+import org.jetbrains.kotlin.resolve.*
 import org.jetbrains.kotlin.resolve.constants.EnumValue
 import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
 import org.jetbrains.kotlin.resolve.jvm.extensions.AnalysisHandlerExtension
 import org.jetbrains.kotlin.resolve.lazy.ResolveSession
 import java.io.File
+import java.nio.file.Files
+import kotlin.streams.toList
 
 private val WHITESPACE_TO_DELETE: Key<Boolean> = Key.create("WHITESPACE_TO_DELETE")
 
-class PrimitivesGeneratorAnalysisHandler(private val outputDir: File, private val incrementalDir: File?) : AnalysisHandlerExtension {
-    private var generated = false
+class PrimitivesGeneratorAnalysisHandler(
+    private val collector: MessageCollector,
+    private val outputDir: File,
+    private val incrementalDir: File
+) : AnalysisHandlerExtension {
+    private val cache = ICCache(incrementalDir)
 
     override fun doAnalysis(
         project: Project,
@@ -41,24 +45,27 @@ class PrimitivesGeneratorAnalysisHandler(private val outputDir: File, private va
         bindingTrace: BindingTrace,
         componentProvider: ComponentProvider
     ): AnalysisResult? {
-        if (generated)
-            return null
-
-        val incrementalCache = ICCache(incrementalDir)
         val resolveSession = componentProvider.get<ResolveSession>()
         val context = bindingTrace.bindingContext
 
-        files as MutableCollection
+        outputDir.mkdirs()
 
-        val primitiveFiles = files.filter { resolveSession.getFileAnnotations(it).hasAnnotation(PRIMITIVE_FILE) }
-        val analyzedPrimitivesFiles = incrementalCache.analyzeInput(primitiveFiles)
+        val inputs = files.filter { resolveSession.getFileAnnotations(it).hasAnnotation(PRIMITIVE_FILE) }
+        val restartByInputs = cache.shouldRestartByInputs(inputs)
 
-        if (analyzedPrimitivesFiles.isEmpty())
-            return null
+        val outputs = Files.walk(outputDir.toPath()).filter(Files::isRegularFile).map { it.toFile() }.toList()
+        val restartByOutputs = cache.shouldRestartByOutputs(outputs)
 
-        componentProvider.get<LazyTopDownAnalyzer>().analyzeDeclarations(TopDownAnalysisMode.TopLevelDeclarations, analyzedPrimitivesFiles)
+        if (!restartByInputs && !restartByOutputs) return null
 
-        val primitiveClasses = analyzedPrimitivesFiles.flatMap { it.collectClasses(context) }
+        //clear outputs
+        outputDir.deleteRecursively()
+        outputDir.mkdirs()
+
+        //recreate
+        componentProvider.get<LazyTopDownAnalyzer>().analyzeDeclarations(TopDownAnalysisMode.TopLevelDeclarations, inputs)
+
+        val primitiveClasses = inputs.flatMap { it.collectClasses(context) }
 
         val replacements = HashMap<String, (Primitive<*, *>) -> String>().apply {
             put(DataType::class.qualifiedName!! + ".${DataType.UNKNOWN.name}") { it.dataType.name }
@@ -82,20 +89,19 @@ class PrimitivesGeneratorAnalysisHandler(private val outputDir: File, private va
         }
 
 
-        val newFiles = mutableListOf<File>()
+        val newOutputs = ArrayList<File>()
 
         data class PrimitiveContext(
             val type1: Primitive<*, *>? = null,
             val type2: Primitive<*, *>? = null,
             val type3: Primitive<*, *>? = null
         )
-        for (file in analyzedPrimitivesFiles) {
-
+        for (input in inputs) {
             for (primitive in Primitive.all()) {
                 val builder = StringBuilder()
                 var isNotEmptyFile = false
 
-                file.accept(object : KtDefaultVisitor() {
+                input.accept(object : KtDefaultVisitor() {
                     private var currentPrimitive = primitive
                     private fun withPrimitive(primitive: Primitive<*, *>?, body: () -> Unit) {
                         if (primitive == null) throw IllegalStateException("Type not bound")
@@ -132,7 +138,10 @@ class PrimitivesGeneratorAnalysisHandler(private val outputDir: File, private va
                     override fun visitAnnotationEntry(annotationEntry: KtAnnotationEntry) {
                         if (annotationEntry.isPluginAnnotation()) {
                             if (!annotationEntry.isAnnotation<PrimitiveBinding>(context)) {
-                                (annotationEntry.nextSibling ?: annotationEntry.parent.nextSibling)?.putUserData(WHITESPACE_TO_DELETE, true)
+                                (annotationEntry.nextSibling ?: annotationEntry.parent.nextSibling)?.putUserData(
+                                    WHITESPACE_TO_DELETE,
+                                    true
+                                )
                             }
 
                             return
@@ -160,9 +169,14 @@ class PrimitivesGeneratorAnalysisHandler(private val outputDir: File, private va
                     }
 
                     override fun visitNamedFunction(function: KtNamedFunction) {
-                        val excludes = function.annotationEntries.lastOrNull { it.isAnnotation<Exclude>(context) }?.getTypes("types") ?: emptyList()
+                        val excludes = function.annotationEntries.lastOrNull { it.isAnnotation<Exclude>(context) }
+                            ?.getTypes("types") ?: emptyList()
                         if (function.isAnnotatedWith<PrimitiveBinding>(context)) {
-                            for (annotation in function.annotationEntries.filter { it.isAnnotation<PrimitiveBinding>(context) }) {
+                            for (annotation in function.annotationEntries.filter {
+                                it.isAnnotation<PrimitiveBinding>(
+                                    context
+                                )
+                            }) {
                                 val types1 = annotation.getTypes("type1")
                                 val types2 = annotation.getTypes("type2")
                                 val types3 = annotation.getTypes("type3")
@@ -175,7 +189,13 @@ class PrimitivesGeneratorAnalysisHandler(private val outputDir: File, private va
                                     val type2 = if (types2.isEmpty()) null else combination[index++]
                                     val type3 = if (types3.isEmpty()) null else combination[index]
 
-                                    withContext(PrimitiveContext(type1?.toPrimitive(), type2?.toPrimitive(), type3?.toPrimitive())) {
+                                    withContext(
+                                        PrimitiveContext(
+                                            type1?.toPrimitive(),
+                                            type2?.toPrimitive(),
+                                            type3?.toPrimitive()
+                                        )
+                                    ) {
                                         super.visitNamedFunction(function)
                                     }
                                     builder.append('\n')
@@ -203,7 +223,9 @@ class PrimitivesGeneratorAnalysisHandler(private val outputDir: File, private va
                     }
 
                     override fun visitClass(klass: KtClass) {
-                        val excludes = klass.annotationEntries.lastOrNull { it.isAnnotation<Exclude>(context) }?.getTypes("types") ?: emptyList()
+                        val excludes =
+                            klass.annotationEntries.lastOrNull { it.isAnnotation<Exclude>(context) }?.getTypes("types")
+                                ?: emptyList()
 
                         if (!excludes.contains(currentPrimitive.dataType)) {
                             isNotEmptyFile = true
@@ -230,7 +252,11 @@ class PrimitivesGeneratorAnalysisHandler(private val outputDir: File, private va
                     override fun visitLeafElement(element: LeafPsiElement) {
                         if (element.elementType == KtTokens.IDENTIFIER) {
                             if (element.parent in primitiveClasses) {
-                                builder.append(replacements[(element.parent as KtClass).qualifiedName]!!.invoke(currentPrimitive))
+                                builder.append(
+                                    replacements[(element.parent as KtClass).qualifiedName]!!.invoke(
+                                        currentPrimitive
+                                    )
+                                )
                                 return
                             }
                         }
@@ -240,27 +266,36 @@ class PrimitivesGeneratorAnalysisHandler(private val outputDir: File, private va
                 })
 
                 if (isNotEmptyFile)
-                    with(File(outputDir,"${file.packageFqName.asString().replace('.', '/')}/${file.name.replace("Primitive", primitive.typeName)}")) {
-                        files.removeIf { it.name == this.name }
-                        newFiles.add(this)
+                    with(
+                        File(
+                            outputDir,
+                            "${input.packageFqName.asString().replace('.', '/')}/${
+                                input.name.replace(
+                                    "Primitive",
+                                    primitive.typeName
+                                )
+                            }"
+                        )
+                    ) {
+                        newOutputs.add(this)
                         parentFile.mkdirs()
                         writeText(builder.toString())
                     }
             }
         }
 
-        generated = true
+        cache.updateManifest(inputs, newOutputs)
 
         return when {
             bindingTrace.bindingContext.diagnostics.any { it.severity == Severity.ERROR } -> {
                 AnalysisResult.compilationError(bindingTrace.bindingContext)
             }
-            newFiles.isEmpty() -> null
+            newOutputs.isEmpty() -> null
             else -> {
                 AnalysisResult.RetryWithAdditionalRoots(
                     bindingContext = bindingTrace.bindingContext,
                     moduleDescriptor = module,
-                    additionalKotlinRoots = newFiles,
+                    additionalKotlinRoots = newOutputs,
                     additionalJavaRoots = emptyList(),
                     addToEnvironment = true
                 )
