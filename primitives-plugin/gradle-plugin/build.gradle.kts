@@ -7,6 +7,7 @@ version = rootProject.version
 dependencies {
     api(kotlin("stdlib"))
     implementation(project(":primitives-plugin:kotlin-plugin"))
+    implementation(kotlin("compiler-embeddable"))
     implementation(kotlin("gradle-plugin-api", "1.4.20"))
 }
 

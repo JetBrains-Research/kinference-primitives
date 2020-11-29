@@ -1,5 +1,5 @@
 package test
 
-class NewTest {
+class Test {
     val byte = ByteTest()
 }

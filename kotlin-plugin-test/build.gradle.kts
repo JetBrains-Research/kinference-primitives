@@ -20,9 +20,9 @@ tasks.withType<KotlinJvmCompile> {
     kotlinOptions {
         freeCompilerArgs = freeCompilerArgs + listOf(
             "-P",
-            "plugin:io.kinference.primitives:outputDir=$generatedDir",
+            "plugin:io.kinference.primitives.kotlin-plugin:outputDir=$generatedDir",
             "-P",
-            "plugin:io.kinference.primitives:icOutputDir=$incrementalDir"
+            "plugin:io.kinference.primitives.kotlin-plugin:icOutputDir=$incrementalDir"
         )
     }
 }

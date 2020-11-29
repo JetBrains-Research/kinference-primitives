@@ -20,7 +20,7 @@ class PrimitivesGeneratorCLProcessor : CommandLineProcessor {
     }
 
     companion object {
-        const val PLUGIN_ID = "io.kinference.primitives"
+        const val PLUGIN_ID = "io.kinference.primitives.kotlin-plugin"
 
         val OUTPUT_DIR_OPTION =
             CliOption(
