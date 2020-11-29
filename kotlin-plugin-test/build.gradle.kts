@@ -31,6 +31,8 @@ idea {
     module.generatedSourceDirs.plusAssign(files(generatedDir))
 }
 
+tasks["compileKotlin"].outputs.dir(generatedDir)
+
 kotlin {
     sourceSets["main"].apply {
         kotlin.srcDirs(generatedDir)

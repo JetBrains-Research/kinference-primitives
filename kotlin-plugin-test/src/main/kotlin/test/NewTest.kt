@@ -1,5 +1,5 @@
 package test
 
 class Test {
-    val byte = ByteTest()
+    val byte = FloatTest()
 }

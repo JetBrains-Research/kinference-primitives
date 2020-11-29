@@ -1,8 +1,6 @@
 package io.kinference.primitives.utils.psi
 
-import io.kinference.primitives.annotations.PrimitiveClass
-import org.jetbrains.kotlin.psi.*
-import org.jetbrains.kotlin.resolve.BindingContext
+import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.resolve.lazy.ForceResolveUtil
 
 val KtNamedDeclaration.qualifiedName

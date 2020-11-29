@@ -32,7 +32,7 @@ class Primitive<Type : Any, ArrayType : Any>(val dataType: DataType, type: KClas
         }
 
         fun all() = ALL.values
-        fun of(type: DataType) = ALL[type] ?: error("DataType ${type} not registered")
+        fun of(type: DataType) = ALL[type] ?: error("DataType $type not registered")
     }
 
     val typeName = type.simpleName!!

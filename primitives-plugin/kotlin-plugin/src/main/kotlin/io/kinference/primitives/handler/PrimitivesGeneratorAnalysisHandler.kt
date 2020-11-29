@@ -1,9 +1,10 @@
 package io.kinference.primitives.handler
 
-import io.kinference.primitives.annotations.*
+import io.kinference.primitives.annotations.GenerateWithPrimitives
+import io.kinference.primitives.annotations.PrimitiveClass
 import io.kinference.primitives.ic.ICCache
-import io.kinference.primitives.types.*
-import io.kinference.primitives.utils.psi.*
+import io.kinference.primitives.utils.psi.KtDefaultVisitor
+import io.kinference.primitives.utils.psi.isAnnotatedWith
 import org.jetbrains.kotlin.analyzer.AnalysisResult
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.com.intellij.openapi.project.Project
@@ -13,7 +14,8 @@ import org.jetbrains.kotlin.context.ProjectContext
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.diagnostics.Severity
 import org.jetbrains.kotlin.name.FqName
-import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.psi.KtClass
+import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.resolve.*
 import org.jetbrains.kotlin.resolve.jvm.extensions.AnalysisHandlerExtension
 import org.jetbrains.kotlin.resolve.lazy.ResolveSession
@@ -27,6 +29,10 @@ class PrimitivesGeneratorAnalysisHandler(
     private val outputDir: File,
     private val incrementalDir: File
 ) : AnalysisHandlerExtension {
+    companion object {
+        private val PRIMITIVE_FILE = FqName(GenerateWithPrimitives::class.qualifiedName!!)
+    }
+
     private val cache = ICCache(incrementalDir)
 
     override fun doAnalysis(
@@ -72,8 +78,8 @@ class PrimitivesGeneratorAnalysisHandler(
                 AnalysisResult.RetryWithAdditionalRoots(
                     bindingContext = bindingTrace.bindingContext,
                     moduleDescriptor = module,
-                    additionalKotlinRoots = inputsToOutputs.values.flatten(),
-                    additionalJavaRoots = emptyList(),
+                    additionalKotlinRoots = listOf(outputDir),
+                    additionalJavaRoots = listOf(outputDir),
                     addToEnvironment = true
                 )
             }
@@ -90,10 +96,6 @@ class PrimitivesGeneratorAnalysisHandler(
             }
         })
         return classes
-    }
-
-    companion object {
-        private val PRIMITIVE_FILE = FqName(GenerateWithPrimitives::class.qualifiedName!!)
     }
 }
 

@@ -13,7 +13,7 @@ class PrimitiveTest {
     fun test(): PrimitiveType {
         val x: PrimitiveType = (0).toPrimitive()
         val y: PrimitiveType = (x + x).toPrimitive()
-        val z = (y * y).toPrimitive()
+        val z = (x * y).toPrimitive()
         val mem = (z + z).toPrimitive()
         return y
     }

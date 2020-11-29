@@ -11,13 +11,25 @@ class ICCache(incrementalDir: File) {
     data class Manifest(val inputsToOutputs: Map<FileData, Set<FileData>> = emptyMap()) {
         @Serializable
         data class FileData(val file: String, val hash: String) {
-            constructor(file: KtFile) : this(file.virtualFilePath, file.text.sha256())
+            constructor(file: KtFile) : this(file.virtualFile.canonicalPath!!, file.text.sha256())
             constructor(file: File) : this(file.canonicalPath, file.sha256())
+
+            fun isUpToDate() = File(file).takeIf { it.exists() }?.sha256() == hash
+        }
+
+        fun isUpToDate(): Boolean {
+            for ((input, outputs) in inputsToOutputs) {
+                if (!input.isUpToDate() || !outputs.any { it.isUpToDate() }) {
+                    return false
+                }
+            }
+
+            return true
         }
     }
 
     data class State(val upToDate: UpToDate, val notUpToDate: NotUpToDate) {
-        data class UpToDate(val inputsToOutputs: Map<KtFile, Set<File>>)
+        data class UpToDate(val inputsToOutputs: Map<Manifest.FileData, Set<Manifest.FileData>>)
         data class NotUpToDate(val inputs: Set<KtFile>, val outputs: Set<File>)
     }
 
@@ -28,15 +40,10 @@ class ICCache(incrementalDir: File) {
             manifestFile.writeText(JSON.string(Manifest.serializer(), value))
         }
 
-    private fun getUnknownFiles(manifest: Manifest, outputs: Collection<File>): Set<File> {
-        val allExpectedFiles = manifest.inputsToOutputs.values.flatMap { output -> output.map { it.file } }.toSet()
-        return outputs.filter { it.file() !in allExpectedFiles }.toSet()
-    }
-
     fun getState(inputs: Collection<KtFile>, outputs: Collection<File>): State {
         val manifest = manifest
 
-        val upToDate = HashMap<KtFile, Set<File>>()
+        val upToDate = HashMap<Manifest.FileData, Set<Manifest.FileData>>()
         val toRegenerate = HashSet<KtFile>()
         val toRemove = HashSet<File>()
 
@@ -44,7 +51,6 @@ class ICCache(incrementalDir: File) {
         toRemove.addAll(unknown)
 
         for (input in inputs) {
-
             val icInput = manifest.inputsToOutputs.keys.find { it.file == input.virtualFilePath }
             if (icInput == null) {
                 toRegenerate.add(input)
@@ -66,20 +72,27 @@ class ICCache(incrementalDir: File) {
                 continue
             }
 
-            upToDate[input] = icOutputsPath.map { path -> outputs.single { it.canonicalPath == path } }.toSet()
+            upToDate[icInput] = icOutputs
+        }
+
+        for ((icInput, icOutputs) in manifest.inputsToOutputs) {
+            if (icInput in upToDate) continue
+            if (icInput.isUpToDate() && icOutputs.all { it.isUpToDate() }) {
+                upToDate[icInput] = icOutputs
+            }
         }
 
         return State(State.UpToDate(upToDate), State.NotUpToDate(toRegenerate, toRemove))
     }
 
-    fun updateManifest(upToDate: State.UpToDate, inputsToOutputs: Map<KtFile, Set<File>>) {
-        val total = upToDate.inputsToOutputs + inputsToOutputs
-        manifest = Manifest(total.map { (input, outputs) -> Manifest.FileData(input) to outputs.map { Manifest.FileData(it) }.toSet() }.toMap())
+    private fun getUnknownFiles(manifest: Manifest, outputs: Collection<File>): Set<File> {
+        val allExpectedFiles = manifest.inputsToOutputs.values.flatMap { output -> output.map { it.file } }.toSet()
+        return outputs.filter { it.canonicalPath !in allExpectedFiles }.toSet()
     }
 
-    private fun File.file() = canonicalPath
-    private fun KtFile.file() = virtualFilePath
-
-    private fun File.hash() = sha256()
-    private fun KtFile.hash() = text.sha256()
+    fun updateManifest(upToDate: State.UpToDate, inputsToOutputs: Map<KtFile, Set<File>>) {
+        val total = upToDate.inputsToOutputs +
+            inputsToOutputs.map { (input, outputs) -> Manifest.FileData(input) to outputs.map { Manifest.FileData(it) }.toSet() }
+        manifest = Manifest(total.toMap())
+    }
 }
