@@ -1,11 +1,11 @@
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompile
 
 group = "io.kinference.primitives"
-version = "0.1.2"
+version = "0.1.3"
 
 plugins {
-    id("tanvd.kosogor") version "1.0.9" apply true
-    kotlin("jvm") version "1.3.72" apply false
+    id("tanvd.kosogor") version "1.0.10" apply true
+    kotlin("jvm") version "1.4.20" apply false
     id("io.gitlab.arturbosch.detekt") version ("1.11.0") apply true
 }
 
@@ -23,9 +23,10 @@ subprojects {
 
     tasks.withType<KotlinJvmCompile> {
         kotlinOptions {
-            jvmTarget = "1.8"
-            languageVersion = "1.3"
-            apiVersion = "1.3"
+            jvmTarget = "11"
+            languageVersion = "1.4"
+            apiVersion = "1.4"
+            freeCompilerArgs = freeCompilerArgs + listOf("-Xopt-in=kotlin.RequiresOptIn", "-Xuse-experimental=kotlin.ExperimentalUnsignedTypes")
         }
     }
 

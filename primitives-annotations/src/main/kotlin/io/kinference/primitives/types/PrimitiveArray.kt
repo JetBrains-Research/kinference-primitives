@@ -6,7 +6,7 @@ class PrimitiveArray(val size: Int) {
     constructor(size: Int, init: (Int) -> Any) : this(size)
 
     init {
-        throw UnsupportedOperationException("This class should not be used in runtime")
+        error("This class should not be used in runtime")
     }
 
     val indices: IntRange = 0 until size

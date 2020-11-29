@@ -1,7 +1,9 @@
 rootProject.name = "kinference-primitives"
 
 include(":primitives-annotations")
-include(":primitives-generator")
+include(":primitives-plugin:kotlin-plugin")
+include(":primitives-plugin:gradle-plugin")
+include(":kotlin-plugin-test")
 
 pluginManagement {
     repositories {
