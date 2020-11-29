@@ -39,4 +39,3 @@ class Primitive<Type : Any, ArrayType : Any>(val dataType: DataType, type: KClas
     val arrayTypeName = arrayType.simpleName!!
 }
 
-fun DataType.toPrimitive(): Primitive<*, *> = Primitive.of(this)

@@ -5,7 +5,9 @@ import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.json.Json
 
 internal object JSON {
-    val json = Json.Default
+    val json = Json {
+        allowStructuredMapKeys = true
+    }
 
     inline fun <reified T : Any> string(serializer: SerializationStrategy<T>, value: T): String {
         return json.encodeToString(serializer, value)

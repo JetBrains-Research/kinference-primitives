@@ -8,9 +8,17 @@ import java.io.File
 
 class ICCache(incrementalDir: File) {
     @Serializable
-    data class Manifest(val inputs: List<FileData> = emptyList(), val outputs: List<FileData> = emptyList()) {
+    data class Manifest(val inputsToOutputs: Map<FileData, Set<FileData>> = emptyMap()) {
         @Serializable
-        data class FileData(val file: String, val hash: String)
+        data class FileData(val file: String, val hash: String) {
+            constructor(file: KtFile) : this(file.virtualFilePath, file.text.sha256())
+            constructor(file: File) : this(file.canonicalPath, file.sha256())
+        }
+    }
+
+    data class State(val upToDate: UpToDate, val notUpToDate: NotUpToDate) {
+        data class UpToDate(val inputsToOutputs: Map<KtFile, Set<File>>)
+        data class NotUpToDate(val inputs: Set<KtFile>, val outputs: Set<File>)
     }
 
     private val manifestFile = File(incrementalDir, "incremental-primitives-data.json").also { it.parentFile.mkdirs() }
@@ -20,32 +28,58 @@ class ICCache(incrementalDir: File) {
             manifestFile.writeText(JSON.string(Manifest.serializer(), value))
         }
 
-    fun shouldRestartByInputs(files: Collection<KtFile>): Boolean {
-        val inputs = manifest.inputs.map { it.file to it.hash }.toMap()
-        for (file in files) {
-            val expected = inputs[file.virtualFilePath] ?: return true
-            val current = file.text.sha256()
-            if (expected != current) return true
+    private fun getUnknownFiles(manifest: Manifest, outputs: Collection<File>): Set<File> {
+        val allExpectedFiles = manifest.inputsToOutputs.values.flatMap { output -> output.map { it.file } }.toSet()
+        return outputs.filter { it.file() !in allExpectedFiles }.toSet()
+    }
+
+    fun getState(inputs: Collection<KtFile>, outputs: Collection<File>): State {
+        val manifest = manifest
+
+        val upToDate = HashMap<KtFile, Set<File>>()
+        val toRegenerate = HashSet<KtFile>()
+        val toRemove = HashSet<File>()
+
+        val unknown = getUnknownFiles(manifest, outputs)
+        toRemove.addAll(unknown)
+
+        for (input in inputs) {
+
+            val icInput = manifest.inputsToOutputs.keys.find { it.file == input.virtualFilePath }
+            if (icInput == null) {
+                toRegenerate.add(input)
+                continue
+            }
+
+            val icOutputs = manifest.inputsToOutputs[icInput]!!
+            val icOutputsPath = icOutputs.map { it.file }.toSet()
+
+            if (icInput.hash != input.text.sha256()) {
+                toRegenerate.add(input)
+                toRemove.addAll(outputs.filter { it.canonicalPath in icOutputsPath })
+                continue
+            }
+
+            if (icOutputs.any { icOutput -> outputs.find { it.canonicalPath == icOutput.file }?.sha256() != icOutput.hash }) {
+                toRegenerate.add(input)
+                toRemove.addAll(outputs.filter { it.canonicalPath in icOutputsPath })
+                continue
+            }
+
+            upToDate[input] = icOutputsPath.map { path -> outputs.single { it.canonicalPath == path } }.toSet()
         }
 
-        return false
+        return State(State.UpToDate(upToDate), State.NotUpToDate(toRegenerate, toRemove))
     }
 
-    fun shouldRestartByOutputs(files: Collection<File>): Boolean {
-        val outputs = manifest.outputs.map { it.file to it.hash }.toMap()
-        for (file in files) {
-            val expected = outputs[file.canonicalPath] ?: return true
-            val current = file.readText().sha256()
-            if (expected != current) return true
-        }
-
-        return false
+    fun updateManifest(upToDate: State.UpToDate, inputsToOutputs: Map<KtFile, Set<File>>) {
+        val total = upToDate.inputsToOutputs + inputsToOutputs
+        manifest = Manifest(total.map { (input, outputs) -> Manifest.FileData(input) to outputs.map { Manifest.FileData(it) }.toSet() }.toMap())
     }
 
-    fun updateManifest(inputs: Collection<KtFile>, outputs: Collection<File>) {
-        manifest = Manifest(
-            inputs = inputs.map { Manifest.FileData(it.virtualFilePath, it.text.sha256()) },
-            outputs = outputs.map { Manifest.FileData(it.canonicalPath, it.readText().sha256()) }
-        )
-    }
+    private fun File.file() = canonicalPath
+    private fun KtFile.file() = virtualFilePath
+
+    private fun File.hash() = sha256()
+    private fun KtFile.hash() = text.sha256()
 }
