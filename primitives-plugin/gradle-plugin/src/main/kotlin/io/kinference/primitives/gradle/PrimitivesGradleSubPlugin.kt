@@ -15,24 +15,24 @@ class PrimitivesGradleSubPlugin : KotlinCompilerPluginSupportPlugin {
     override fun applyToCompilation(kotlinCompilation: KotlinCompilation<*>): Provider<List<SubpluginOption>> {
         val project = kotlinCompilation.target.project
 
-        val outputPath = project.file(project.primitives.generationPath)
+        val generationPath = project.file(project.primitives.generationPath)
         val icManifestPath = project.primitives.incrementalCachePath?.let { project.file(it) } ?: project.buildDir
 
         kotlinCompilation.defaultSourceSet {
-            kotlin.srcDirs(outputPath)
+            kotlin.srcDirs(generationPath)
         }
-        project.tasks.getByName("compileKotlin").outputs.dir(outputPath)
+        project.tasks.getByName("compileKotlin").outputs.dir(generationPath)
 
 
         project.extensions.findByType(IdeaModel::class.java)?.let { model ->
             model.apply {
-                module.generatedSourceDirs = module.generatedSourceDirs + outputPath
+                module.generatedSourceDirs = module.generatedSourceDirs + generationPath
             }
         }
 
         return project.provider {
             listOf(
-                SubpluginOption(PrimitivesGeneratorCLProcessor.OUTPUT_DIR_OPTION.optionName, outputPath.canonicalPath),
+                SubpluginOption(PrimitivesGeneratorCLProcessor.OUTPUT_DIR_OPTION.optionName, generationPath.canonicalPath),
                 SubpluginOption(PrimitivesGeneratorCLProcessor.INCREMENTAL_DIR_OPTION.optionName, icManifestPath.canonicalPath)
             )
         }
@@ -46,6 +46,6 @@ class PrimitivesGradleSubPlugin : KotlinCompilerPluginSupportPlugin {
     override fun getPluginArtifact(): SubpluginArtifact = SubpluginArtifact("io.kinference.primitives", "kotlin-plugin", VERSION)
 
     companion object {
-        const val VERSION = "0.1.3"
+        const val VERSION = "0.1.4"
     }
 }

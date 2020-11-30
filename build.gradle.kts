@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompile
 
 group = "io.kinference.primitives"
-version = "0.1.3"
+version = "0.1.4"
 
 plugins {
     id("tanvd.kosogor") version "1.0.10" apply true
@@ -26,7 +26,7 @@ subprojects {
             jvmTarget = "11"
             languageVersion = "1.4"
             apiVersion = "1.4"
-            freeCompilerArgs = freeCompilerArgs + listOf("-Xopt-in=kotlin.RequiresOptIn", "-Xuse-experimental=kotlin.ExperimentalUnsignedTypes")
+            freeCompilerArgs = freeCompilerArgs + listOf("-Xopt-in=kotlin.RequiresOptIn")
         }
     }
 
