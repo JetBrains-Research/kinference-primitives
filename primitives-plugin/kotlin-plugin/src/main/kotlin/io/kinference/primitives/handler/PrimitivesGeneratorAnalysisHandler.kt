@@ -71,9 +71,6 @@ class PrimitivesGeneratorAnalysisHandler(
         cache.updateManifest(upToDate, inputsToOutputs)
 
         return when {
-            inputsToOutputs.isEmpty() && bindingTrace.bindingContext.diagnostics.any { it.severity == Severity.ERROR } -> {
-                AnalysisResult.compilationError(bindingTrace.bindingContext)
-            }
             inputsToOutputs.isEmpty() -> null
             else -> {
                 AnalysisResult.RetryWithAdditionalRoots(
