@@ -6,6 +6,7 @@ import io.kinference.primitives.ic.ICCache
 import io.kinference.primitives.utils.psi.KtDefaultVisitor
 import io.kinference.primitives.utils.psi.isAnnotatedWith
 import org.jetbrains.kotlin.analyzer.AnalysisResult
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.com.intellij.openapi.project.Project
 import org.jetbrains.kotlin.container.ComponentProvider
@@ -70,7 +71,7 @@ class PrimitivesGeneratorAnalysisHandler(
         cache.updateManifest(upToDate, inputsToOutputs)
 
         return when {
-            bindingTrace.bindingContext.diagnostics.any { it.severity == Severity.ERROR } -> {
+            inputsToOutputs.isEmpty() && bindingTrace.bindingContext.diagnostics.any { it.severity == Severity.ERROR } -> {
                 AnalysisResult.compilationError(bindingTrace.bindingContext)
             }
             inputsToOutputs.isEmpty() -> null
@@ -78,8 +79,8 @@ class PrimitivesGeneratorAnalysisHandler(
                 AnalysisResult.RetryWithAdditionalRoots(
                     bindingContext = bindingTrace.bindingContext,
                     moduleDescriptor = module,
-                    additionalKotlinRoots = listOf(outputDir),
-                    additionalJavaRoots = listOf(outputDir),
+                    additionalKotlinRoots = inputsToOutputs.values.flatten(),
+                    additionalJavaRoots = emptyList(),
                     addToEnvironment = true
                 )
             }

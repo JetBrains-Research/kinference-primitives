@@ -21,8 +21,6 @@ class PrimitivesGradleSubPlugin : KotlinCompilerPluginSupportPlugin {
         kotlinCompilation.defaultSourceSet {
             kotlin.srcDirs(generationPath)
         }
-        project.tasks.getByName("compileKotlin").outputs.dir(generationPath)
-
 
         project.extensions.findByType(IdeaModel::class.java)?.let { model ->
             model.apply {
@@ -46,6 +44,6 @@ class PrimitivesGradleSubPlugin : KotlinCompilerPluginSupportPlugin {
     override fun getPluginArtifact(): SubpluginArtifact = SubpluginArtifact("io.kinference.primitives", "kotlin-plugin", VERSION)
 
     companion object {
-        const val VERSION = "0.1.4"
+        const val VERSION = "0.1.5"
     }
 }
