@@ -57,7 +57,7 @@ class PrimitiveGenerator(private val classes: List<KtClass>) {
                 private var currentPrimitive = primitive
 
                 private fun withPrimitive(primitive: Primitive<*, *>?, body: () -> Unit) {
-                    if (primitive == null) throw IllegalStateException("Type not bound")
+                    require(primitive != null) { "Type not bound" }
 
                     val tmp = currentPrimitive
                     currentPrimitive = primitive
@@ -187,11 +187,9 @@ class PrimitiveGenerator(private val classes: List<KtClass>) {
                 }
 
                 override fun visitLeafElement(element: LeafPsiElement) {
-                    if (element.elementType == KtTokens.IDENTIFIER) {
-                        if (element.parent in classes) {
-                            builder.append(replacements[(element.parent as KtClass).qualifiedName]!!.invoke(currentPrimitive))
-                            return
-                        }
+                    if (element.elementType == KtTokens.IDENTIFIER && element.parent in classes) {
+                        builder.append(replacements[(element.parent as KtClass).qualifiedName]!!.invoke(currentPrimitive))
+                        return
                     }
 
                     builder.append(element.text)

@@ -1,4 +1,5 @@
 @file:GenerateWithPrimitives
+@file:Suppress("unused")
 
 package test
 
@@ -15,6 +16,6 @@ class PrimitiveTest {
         val y: PrimitiveType = (x + x).toPrimitive()
         val z = (x * y).toPrimitive()
         val mem = (z + z).toPrimitive()
-        return y
+        return mem
     }
 }

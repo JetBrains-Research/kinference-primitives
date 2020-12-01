@@ -11,7 +11,7 @@ class PrimitiveType {
     }
 
     init {
-        throw IllegalStateException("Don't use this class in runtime")
+        error("Don't use this class in runtime")
     }
 
     operator fun plus(other: PrimitiveType): PrimitiveType = throw UnsupportedOperationException()

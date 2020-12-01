@@ -13,7 +13,6 @@ import org.jetbrains.kotlin.container.ComponentProvider
 import org.jetbrains.kotlin.container.get
 import org.jetbrains.kotlin.context.ProjectContext
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
-import org.jetbrains.kotlin.diagnostics.Severity
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtFile
@@ -24,11 +23,10 @@ import java.io.File
 import java.nio.file.Files
 import kotlin.streams.toList
 
-
 class PrimitivesGeneratorAnalysisHandler(
     private val collector: MessageCollector,
     private val outputDir: File,
-    private val incrementalDir: File
+    incrementalDir: File
 ) : AnalysisHandlerExtension {
     companion object {
         private val PRIMITIVE_FILE = FqName(GenerateWithPrimitives::class.qualifiedName!!)
@@ -54,6 +52,8 @@ class PrimitivesGeneratorAnalysisHandler(
 
         val (upToDate, notUpToDate) = cache.getState(allInputs, allOutputs)
 
+        collector.report(CompilerMessageSeverity.LOGGING, "Primitives generator consider not up to date: $notUpToDate")
+
         notUpToDate.outputs.forEach { it.delete() }
 
         //recreate
@@ -69,6 +69,8 @@ class PrimitivesGeneratorAnalysisHandler(
         }
 
         cache.updateManifest(upToDate, inputsToOutputs)
+
+        collector.report(CompilerMessageSeverity.LOGGING, "Primitives generator generated: $inputsToOutputs")
 
         return when {
             inputsToOutputs.isEmpty() -> null

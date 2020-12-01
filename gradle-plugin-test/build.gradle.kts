@@ -1,10 +1,10 @@
 plugins {
     kotlin("jvm") version "1.4.20" apply true
-    id("io.kinference.primitives") version "0.1.5"
+    id("io.kinference.primitives") version "0.1.6"
 }
 
 group = "io.kinference.primitives"
-version = "0.1.5"
+version = "0.1.6"
 
 repositories {
     mavenCentral()
@@ -13,7 +13,7 @@ repositories {
 
 dependencies {
     implementation(kotlin("stdlib"))
-    api("io.kinference.primitives", "primitives-annotations", "0.1.5")
+    api("io.kinference.primitives", "primitives-annotations", "0.1.6")
 }
 
 tasks.withType<KotlinJvmCompile> {

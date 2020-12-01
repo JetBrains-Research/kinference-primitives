@@ -44,6 +44,6 @@ class PrimitivesGradleSubPlugin : KotlinCompilerPluginSupportPlugin {
     override fun getPluginArtifact(): SubpluginArtifact = SubpluginArtifact("io.kinference.primitives", "kotlin-plugin", VERSION)
 
     companion object {
-        const val VERSION = "0.1.5"
+        const val VERSION = "0.1.6"
     }
 }
