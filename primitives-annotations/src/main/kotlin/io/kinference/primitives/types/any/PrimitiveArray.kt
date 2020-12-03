@@ -1,4 +1,4 @@
-package io.kinference.primitives.types
+package io.kinference.primitives.types.any
 
 
 @Suppress("unused", "UNUSED_PARAMETER", "MemberVisibilityCanBePrivate")
@@ -13,10 +13,6 @@ class PrimitiveArray(val size: Int) {
 
     operator fun get(index: Int): PrimitiveType = throw UnsupportedOperationException()
     operator fun set(index: Int, value: PrimitiveType): PrimitiveType = throw UnsupportedOperationException()
-
-    fun min(): PrimitiveType = throw UnsupportedOperationException()
-    fun max(): PrimitiveType = throw UnsupportedOperationException()
-    fun sum(): PrimitiveType = throw UnsupportedOperationException()
 
     fun fill(element: PrimitiveType, fromIndex: Int = 0, toIndex: Int = size): Unit = throw UnsupportedOperationException()
 

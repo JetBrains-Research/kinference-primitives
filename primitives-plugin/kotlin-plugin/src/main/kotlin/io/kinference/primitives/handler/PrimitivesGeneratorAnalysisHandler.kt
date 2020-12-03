@@ -1,10 +1,11 @@
 package io.kinference.primitives.handler
 
-import io.kinference.primitives.annotations.GenerateWithPrimitives
-import io.kinference.primitives.annotations.PrimitiveClass
+import io.kinference.primitives.annotations.GeneratePrimitives
+import io.kinference.primitives.annotations.GenerateNameFromPrimitives
+import io.kinference.primitives.generator.PrimitiveGenerator
+import io.kinference.primitives.generator.ReplacementProcessor
 import io.kinference.primitives.ic.ICCache
-import io.kinference.primitives.utils.psi.KtDefaultVisitor
-import io.kinference.primitives.utils.psi.isAnnotatedWith
+import io.kinference.primitives.utils.psi.*
 import org.jetbrains.kotlin.analyzer.AnalysisResult
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
@@ -13,6 +14,7 @@ import org.jetbrains.kotlin.container.ComponentProvider
 import org.jetbrains.kotlin.container.get
 import org.jetbrains.kotlin.context.ProjectContext
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
+import org.jetbrains.kotlin.library.metadata.KlibMetadataProtoBuf.fqName
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtFile
@@ -29,7 +31,6 @@ class PrimitivesGeneratorAnalysisHandler(
     incrementalDir: File
 ) : AnalysisHandlerExtension {
     companion object {
-        private val PRIMITIVE_FILE = FqName(GenerateWithPrimitives::class.qualifiedName!!)
     }
 
     private val cache = ICCache(incrementalDir)
@@ -47,7 +48,7 @@ class PrimitivesGeneratorAnalysisHandler(
 
         outputDir.mkdirs()
 
-        val allInputs = files.filter { resolveSession.getFileAnnotations(it).hasAnnotation(PRIMITIVE_FILE) }
+        val allInputs = files.filter { resolveSession.getFileAnnotations(it).hasAnnotation(GeneratePrimitives::class.fqName) }
         val allOutputs = Files.walk(outputDir.toPath()).filter(Files::isRegularFile).map { it.toFile() }.toList().toMutableSet()
 
         val (upToDate, notUpToDate) = cache.getState(allInputs, allOutputs)
@@ -57,14 +58,13 @@ class PrimitivesGeneratorAnalysisHandler(
         notUpToDate.outputs.forEach { it.delete() }
 
         //recreate
-        componentProvider.get<LazyTopDownAnalyzer>().analyzeDeclarations(TopDownAnalysisMode.TopLevelDeclarations, notUpToDate.inputs)
+        componentProvider.get<LazyTopDownAnalyzer>().analyzeDeclarations(TopDownAnalysisMode.TopLevelDeclarations, allInputs)
 
-        val classes = notUpToDate.inputs.flatMap { it.collectClasses(context) }
-        val generator = PrimitiveGenerator(classes)
+        val replacementContext = ReplacementProcessor.prepareGlobalContext(context, allInputs.toSet())
 
         val inputsToOutputs = HashMap<KtFile, Set<File>>()
         for (input in notUpToDate.inputs) {
-            val result = generator.generate(input, context, outputDir)
+            val result = PrimitiveGenerator(input, context, outputDir, collector, replacementContext).generate()
             inputsToOutputs[input] = result
         }
 
@@ -84,18 +84,6 @@ class PrimitivesGeneratorAnalysisHandler(
                 )
             }
         }
-    }
-
-    private fun KtFile.collectClasses(context: BindingContext): Set<KtClass> {
-        val classes = HashSet<KtClass>()
-        accept(object : KtDefaultVisitor() {
-            override fun visitClass(klass: KtClass) {
-                if (klass.isAnnotatedWith<PrimitiveClass>(context)) {
-                    classes.add(klass)
-                }
-            }
-        })
-        return classes
     }
 }
 

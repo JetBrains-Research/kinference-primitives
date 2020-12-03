@@ -8,9 +8,9 @@ class Primitive<Type : Any, ArrayType : Any>(val dataType: DataType, type: KClas
     companion object {
         private val ALL = EnumMap<DataType, Primitive<*, *>>(DataType::class.java)
 
-        private inline fun <reified Type : Any, reified ArrayType : Any> create(type: DataType): Primitive<Type, ArrayType> {
+        private inline fun <reified Type : Any, reified ArrayType : Any> create(type: DataType) {
             require(type !in ALL) { "DataType $type already registered" }
-            return Primitive(type, Type::class, ArrayType::class).apply { ALL[type] = this }
+            ALL[type] = Primitive(type, Type::class, ArrayType::class)
         }
 
         init {
