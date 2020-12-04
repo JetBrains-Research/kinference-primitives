@@ -3,9 +3,7 @@
 package test
 
 import io.kinference.primitives.annotations.*
-import io.kinference.primitives.types.DataType
-import io.kinference.primitives.types.any.PrimitiveType
-import io.kinference.primitives.types.number.PrimitiveNumberType
+import io.kinference.primitives.types.*
 
 @GenerateNameFromPrimitives
 class FilteringPrimitiveTest {
@@ -14,7 +12,7 @@ class FilteringPrimitiveTest {
     }
 
     @FilterPrimitives(exclude = [DataType.BOOLEAN])
-    fun numbers(x: PrimitiveNumberType) {
+    fun numbers(x: PrimitiveType) {
         val y = x * x
     }
 }

@@ -69,7 +69,8 @@ class PrimitiveGenerator(private val file: KtFile, private val context: BindingC
                         return
                     }
 
-                    builder.append(importDirective.text)
+                    //TODO check
+                    return super.visitImportDirective(importDirective)
                 }
 
                 override fun visitNamedFunction(function: KtNamedFunction) {

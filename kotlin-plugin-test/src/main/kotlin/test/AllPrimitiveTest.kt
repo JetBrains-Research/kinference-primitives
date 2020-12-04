@@ -4,7 +4,7 @@ package test
 import io.kinference.primitives.annotations.GenerateNameFromPrimitives
 import io.kinference.primitives.annotations.GeneratePrimitives
 import io.kinference.primitives.types.DataType
-import io.kinference.primitives.types.any.PrimitiveType
+import io.kinference.primitives.types.PrimitiveType
 
 @GenerateNameFromPrimitives
 class AllPrimitiveTest {

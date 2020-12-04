@@ -3,15 +3,14 @@ package test
 
 import io.kinference.primitives.annotations.GenerateNameFromPrimitives
 import io.kinference.primitives.annotations.GeneratePrimitives
-import io.kinference.primitives.types.DataType
-import io.kinference.primitives.types.number.PrimitiveNumberType
+import io.kinference.primitives.types.*
 
 @GenerateNameFromPrimitives
 class ClassPrimitiveTest {
-    val a = PrimitiveNumberType.MIN_VALUE
+    val a = PrimitiveType.MIN_VALUE
 
     companion object {
-        val x: PrimitiveNumberType = PrimitiveNumberType.MAX_VALUE
+        val x: PrimitiveType = PrimitiveType.MAX_VALUE
         val y = ClassPrimitiveTest.x
         val z = ClassPrimitiveTest()
     }

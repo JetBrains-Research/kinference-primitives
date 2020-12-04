@@ -58,9 +58,10 @@ class PrimitivesGeneratorAnalysisHandler(
         notUpToDate.outputs.forEach { it.delete() }
 
         //recreate
-        componentProvider.get<LazyTopDownAnalyzer>().analyzeDeclarations(TopDownAnalysisMode.TopLevelDeclarations, allInputs)
+        //TODO-tanvd should be allInputs here
+        componentProvider.get<LazyTopDownAnalyzer>().analyzeDeclarations(TopDownAnalysisMode.TopLevelDeclarations, notUpToDate.inputs)
 
-        val replacementContext = ReplacementProcessor.prepareGlobalContext(context, allInputs.toSet())
+        val replacementContext = ReplacementProcessor.prepareGlobalContext(context, notUpToDate.inputs.toSet())
 
         val inputsToOutputs = HashMap<KtFile, Set<File>>()
         for (input in notUpToDate.inputs) {

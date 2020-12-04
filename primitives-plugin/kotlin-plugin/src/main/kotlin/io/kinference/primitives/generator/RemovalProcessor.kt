@@ -1,6 +1,6 @@
 package io.kinference.primitives.generator
 
-import io.kinference.primitives.types.DataType
+import io.kinference.primitives.types.*
 import org.jetbrains.kotlin.com.intellij.openapi.util.Key
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.com.intellij.psi.PsiWhiteSpace
@@ -14,11 +14,13 @@ import java.lang.StringBuilder
 class RemovalProcessor(private val context: BindingContext, private val builder: StringBuilder) {
     companion object {
         private val WHITESPACE_TO_DELETE: Key<Boolean> = Key.create("WHITESPACE_TO_DELETE")
+
+        private val importsToRemove = setOf(PrimitiveType::class.qualifiedName, PrimitiveArray::class.qualifiedName,)
     }
 
     fun shouldRemoveImport(directive: KtImportDirective): Boolean {
         val import = directive.importPath?.toString() ?: return false
-        return import.startsWith(DataType::class.java.`package`.name)
+        return import in importsToRemove
     }
 
     fun shouldRemoveAnnotation(annotation: KtAnnotationEntry): Boolean {

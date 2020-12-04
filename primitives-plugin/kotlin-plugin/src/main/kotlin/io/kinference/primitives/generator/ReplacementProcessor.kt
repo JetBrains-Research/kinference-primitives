@@ -2,11 +2,7 @@ package io.kinference.primitives.generator
 
 import io.kinference.primitives.annotations.GenerateNameFromPrimitives
 import io.kinference.primitives.handler.Primitive
-import io.kinference.primitives.types.DataType
-import io.kinference.primitives.types.any.PrimitiveArray
-import io.kinference.primitives.types.any.PrimitiveType
-import io.kinference.primitives.types.number.PrimitiveNumberArray
-import io.kinference.primitives.types.number.PrimitiveNumberType
+import io.kinference.primitives.types.*
 import io.kinference.primitives.utils.psi.*
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.resolve.BindingContext
@@ -46,23 +42,16 @@ class ReplacementProcessor(private val replacementContext: GlobalReplacementCont
             (PrimitiveType::class.java.`package`.name + ".toPrimitive") to { "to${it.typeName}" },
 
             (PrimitiveType::class.qualifiedName!! + ".toPrimitive") to { "to${it.typeName}" },
-            (PrimitiveNumberType::class.qualifiedName!! + ".toPrimitive") to { "to${it.typeName}" },
 
 
             (PrimitiveType::class.qualifiedName!!) to { it.typeName },
             (PrimitiveType::class.qualifiedName!! + ".<init>") to { it.typeName },
             (PrimitiveType::class.qualifiedName!! + ".Companion") to { it.typeName },
-            (PrimitiveNumberType::class.qualifiedName!!) to { it.typeName },
-            (PrimitiveNumberType::class.qualifiedName!! + ".<init>") to { it.typeName },
-            (PrimitiveNumberType::class.qualifiedName!! + ".Companion") to { it.typeName },
 
 
             (PrimitiveArray::class.qualifiedName!!) to { it.arrayTypeName },
             (PrimitiveArray::class.qualifiedName!! + ".<init>") to { it.arrayTypeName },
-            (PrimitiveArray::class.qualifiedName!! + ".Companion") to { it.arrayTypeName },
-            (PrimitiveNumberArray::class.qualifiedName!!) to { it.arrayTypeName },
-            (PrimitiveNumberArray::class.qualifiedName!! + ".<init>") to { it.arrayTypeName },
-            (PrimitiveNumberArray::class.qualifiedName!! + ".Companion") to { it.arrayTypeName },
+            (PrimitiveArray::class.qualifiedName!! + ".Companion") to { it.arrayTypeName }
         )
     }
 
@@ -85,14 +74,9 @@ class ReplacementProcessor(private val replacementContext: GlobalReplacementCont
 
     fun getReplacement(expression: KtSimpleNameExpression, primitive: Primitive<*, *>): String? {
         val reference = context[BindingContext.REFERENCE_TARGET, expression] ?: return null
-        val forced = reference.forced()
-        if (forced is KtAnnotated && forced.isAnnotatedWith<GenerateNameFromPrimitives>(context)) {
-            return expression.text.replace("Primitive", primitive.typeName)
-        } else {
-            val type = reference.forced().fqNameSafe.asString()
-            if (expression.text != "this" && type in replacements) {
-                return replacements[type]!!.invoke(primitive)
-            }
+        val type = reference.forced().fqNameSafe.asString()
+        if (expression.text != "this" && type in replacements) {
+            return replacements[type]!!.invoke(primitive)
         }
         return null
     }
