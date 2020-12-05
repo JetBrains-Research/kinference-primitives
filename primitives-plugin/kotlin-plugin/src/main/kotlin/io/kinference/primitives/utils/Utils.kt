@@ -5,7 +5,7 @@ import java.security.MessageDigest
 
 
 fun <T> crossProduct(vararg collections: Collection<T>): List<List<T>> {
-    if (collections.isEmpty()) return emptyList()
+    if (collections.all { it.isEmpty() }) return emptyList()
 
     val entries = collections.filter(Collection<T>::isNotEmpty)
     return entries.drop(1).fold(entries.first().map(::listOf)) { acc, entry ->

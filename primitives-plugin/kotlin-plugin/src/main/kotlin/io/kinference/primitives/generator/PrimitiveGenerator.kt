@@ -2,9 +2,13 @@ package io.kinference.primitives.generator
 
 import io.kinference.primitives.annotations.BindPrimitives
 import io.kinference.primitives.annotations.GeneratePrimitives
+import io.kinference.primitives.generator.errors.require
+import io.kinference.primitives.generator.processor.RemovalProcessor
+import io.kinference.primitives.generator.processor.ReplacementProcessor
 import io.kinference.primitives.handler.Primitive
 import io.kinference.primitives.utils.crossProduct
 import io.kinference.primitives.utils.psi.*
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.com.intellij.psi.PsiWhiteSpace
 import org.jetbrains.kotlin.com.intellij.psi.impl.source.tree.LeafPsiElement
@@ -24,17 +28,22 @@ class PrimitiveGenerator(
         val results = HashSet<File>()
 
         val types = file.getAnnotation<GeneratePrimitives>(context).getTypes(context, GeneratePrimitives::types)
+        collector.require(CompilerMessageSeverity.WARNING, file, types.isNotEmpty()) {
+            "There are no `DataType`s specified in ${GeneratePrimitives::class.simpleName} annotation. It would lead to omitting this file during generation"
+        }
         for (primitive in types.flatMap { it.toPrimitive() }.toSet()) {
             val builder = StringBuilder()
 
             val removalProcessor = RemovalProcessor(context)
-            val replacementProcessor = ReplacementProcessor(context)
+            val replacementProcessor = ReplacementProcessor(context, collector)
 
             file.accept(object : KtDefaultVisitor() {
                 private var currentPrimitive = primitive
 
-                private fun withPrimitive(primitive: Primitive<*, *>?, body: () -> Unit) {
-                    require(primitive != null) { "Type not bound" }
+                private fun KtElement.withPrimitive(primitive: Primitive<*, *>?, body: () -> Unit) {
+                    collector.require(CompilerMessageSeverity.ERROR, this, primitive != null) {
+                        "Primitive was bound with ${BindPrimitives::class.simpleName} sub-annotation, but outer expression is not annotated with ${BindPrimitives::class.simpleName}"
+                    }
 
                     val tmp = currentPrimitive
                     currentPrimitive = primitive
@@ -84,6 +93,11 @@ class PrimitiveGenerator(
                             val primitives2 = annotation.getTypes(context, BindPrimitives::type2).flatMap { it.toPrimitive() }.toSet()
                             val primitives3 = annotation.getTypes(context, BindPrimitives::type3).flatMap { it.toPrimitive() }.toSet()
 
+
+                            collector.require(CompilerMessageSeverity.WARNING, annotation, false) {
+                                "${BindPrimitives::class.simpleName} annotation all types are empty, it would lead to omitting of the whole function"
+                            }
+
                             val combinations = crossProduct(primitives1, primitives2, primitives3)
 
                             for (combination in combinations) {
@@ -111,13 +125,13 @@ class PrimitiveGenerator(
 
                 override fun visitTypeReference(typeReference: KtTypeReference) {
                     when {
-                        typeReference.isAnnotatedWith<BindPrimitives.Type1>(context) -> withPrimitive(primitiveContext.type1) {
+                        typeReference.isAnnotatedWith<BindPrimitives.Type1>(context) -> typeReference.withPrimitive(primitiveContext.type1) {
                             super.visitTypeReference(typeReference)
                         }
-                        typeReference.isAnnotatedWith<BindPrimitives.Type2>(context) -> withPrimitive(primitiveContext.type2) {
+                        typeReference.isAnnotatedWith<BindPrimitives.Type2>(context) -> typeReference.withPrimitive(primitiveContext.type2) {
                             super.visitTypeReference(typeReference)
                         }
-                        typeReference.isAnnotatedWith<BindPrimitives.Type3>(context) -> withPrimitive(primitiveContext.type3) {
+                        typeReference.isAnnotatedWith<BindPrimitives.Type3>(context) -> typeReference.withPrimitive(primitiveContext.type3) {
                             super.visitTypeReference(typeReference)
                         }
                         else -> super.visitTypeReference(typeReference)
@@ -127,13 +141,13 @@ class PrimitiveGenerator(
 
                 override fun visitAnnotatedExpression(expression: KtAnnotatedExpression) {
                     when {
-                        expression.isAnnotatedWith<BindPrimitives.Type1>(context) -> withPrimitive(primitiveContext.type1) {
+                        expression.isAnnotatedWith<BindPrimitives.Type1>(context) -> expression.withPrimitive(primitiveContext.type1) {
                             super.visitAnnotatedExpression(expression)
                         }
-                        expression.isAnnotatedWith<BindPrimitives.Type2>(context) -> withPrimitive(primitiveContext.type2) {
+                        expression.isAnnotatedWith<BindPrimitives.Type2>(context) -> expression.withPrimitive(primitiveContext.type2) {
                             super.visitAnnotatedExpression(expression)
                         }
-                        expression.isAnnotatedWith<BindPrimitives.Type3>(context) -> withPrimitive(primitiveContext.type3) {
+                        expression.isAnnotatedWith<BindPrimitives.Type3>(context) -> expression.withPrimitive(primitiveContext.type3) {
                             super.visitAnnotatedExpression(expression)
                         }
                         else -> super.visitAnnotatedExpression(expression)

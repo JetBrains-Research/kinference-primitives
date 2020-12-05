@@ -1,5 +1,6 @@
-package io.kinference.primitives.generator
+package io.kinference.primitives.generator.processor
 
+import io.kinference.primitives.generator.isPluginAnnotation
 import io.kinference.primitives.types.PrimitiveArray
 import io.kinference.primitives.types.PrimitiveType
 import org.jetbrains.kotlin.com.intellij.openapi.util.Key

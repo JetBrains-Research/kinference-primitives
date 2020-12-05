@@ -5,8 +5,7 @@ import io.kinference.primitives.generator.PrimitiveGenerator
 import io.kinference.primitives.ic.ICCache
 import io.kinference.primitives.utils.psi.isAnnotatedWith
 import org.jetbrains.kotlin.analyzer.AnalysisResult
-import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
-import org.jetbrains.kotlin.cli.common.messages.MessageCollector
+import org.jetbrains.kotlin.cli.common.messages.*
 import org.jetbrains.kotlin.com.intellij.openapi.project.Project
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.psi.KtFile
@@ -36,7 +35,8 @@ class PrimitivesGeneratorAnalysisHandler(
     override fun analysisCompleted(
         project: Project,
         module: ModuleDescriptor,
-        bindingTrace: BindingTrace, files: Collection<KtFile>
+        bindingTrace: BindingTrace,
+        files: Collection<KtFile>
     ): AnalysisResult? {
         val context = bindingTrace.bindingContext
 
@@ -63,6 +63,8 @@ class PrimitivesGeneratorAnalysisHandler(
         cache.updateManifest(upToDate, inputsToOutputs)
 
         collector.report(CompilerMessageSeverity.LOGGING, "Primitives generator generated: $inputsToOutputs")
+
+        if (collector is GroupingMessageCollector) collector.flush()
 
         return when {
             inputsToOutputs.isEmpty() -> null

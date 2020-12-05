@@ -1,6 +1,7 @@
 package io.kinference.primitives.utils.psi
 
 import io.kinference.primitives.types.DataType
+import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
 import org.jetbrains.kotlin.descriptors.annotations.AnnotationDescriptor
 import org.jetbrains.kotlin.psi.KtAnnotated
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
@@ -13,6 +14,10 @@ fun KtAnnotationEntry.getDescriptor(context: BindingContext) = context[BindingCo
 
 inline fun <reified T : Annotation> KtAnnotationEntry.isAnnotation(context: BindingContext): Boolean {
     return getDescriptor(context).fqName?.asString() == T::class.qualifiedName
+}
+
+inline fun <reified T : Annotation> DeclarationDescriptor.isAnnotatedWith(): Boolean {
+    return annotations.any { it.fqName?.asString() == T::class.qualifiedName }
 }
 
 inline fun <reified T : Annotation> KtAnnotated.isAnnotatedWith(context: BindingContext): Boolean {
