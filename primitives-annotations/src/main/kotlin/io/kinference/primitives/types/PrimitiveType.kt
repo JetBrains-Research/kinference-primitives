@@ -5,10 +5,12 @@ package io.kinference.primitives.types
 /**
  * Primitive type that can represent only number types
  */
-abstract class PrimitiveType: Number() {
+abstract class PrimitiveType : Number() {
     companion object {
-        val MIN_VALUE: PrimitiveType = throw UnsupportedOperationException()
-        val MAX_VALUE: PrimitiveType = throw UnsupportedOperationException()
+        val MIN_VALUE: PrimitiveType
+            get() = throw UnsupportedOperationException()
+        val MAX_VALUE: PrimitiveType
+            get() = throw UnsupportedOperationException()
 
         const val SIZE_BYTES: Int = 0
         const val SIZE_BITS: Int = 0

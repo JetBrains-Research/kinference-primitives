@@ -17,7 +17,6 @@ class ReplacementProcessor(private val context: BindingContext) {
 
             (PrimitiveType::class.qualifiedName!! + ".toPrimitive") to { "to${it.typeName}" },
 
-
             (PrimitiveType::class.qualifiedName!!) to { it.typeName },
             (PrimitiveType::class.qualifiedName!! + ".<init>") to { it.typeName },
             (PrimitiveType::class.qualifiedName!! + ".Companion") to { it.typeName },
@@ -30,49 +29,41 @@ class ReplacementProcessor(private val context: BindingContext) {
     }
 
 
-    private val replacements = getSimpleNameReplacements()
-
     fun getReplacement(klass: KtClass, primitive: Primitive<*, *>): String? {
         if (klass.isAnnotatedWith<GenerateNameFromPrimitives>(context)) {
-            return klass.name!!.replace("Primitive", primitive.typeName)
+            return klass.name!!.specialize(primitive)
         }
         return null
     }
 
     fun getReplacement(function: KtNamedFunction, primitive: Primitive<*, *>): String? {
         if (function.isAnnotatedWith<GenerateNameFromPrimitives>(context)) {
-            return function.name!!.replace("Primitive", primitive.typeName)
+            return function.name!!.specialize(primitive)
         }
         return null
     }
 
     fun getReplacement(expression: KtSimpleNameExpression, primitive: Primitive<*, *>): String? {
         val name = expression.text?.takeIf { it.contains("Primitive") } ?: return null
-
         val reference = context[BindingContext.REFERENCE_TARGET, expression]?.forced() ?: return null
         val type = reference.fqNameSafe.asString()
-        if (expression.text != "this" && type in replacements) {
-            return replacements[type]!!.invoke(primitive)
+
+        if (type in defaultReplacements) {
+            return defaultReplacements[type]!!.invoke(primitive)
         } else {
             val original = reference.original
             val originalPsi = original.findPsi()
             if ((originalPsi is KtNamedFunction || originalPsi is KtClass) && (originalPsi as KtAnnotated).isAnnotatedWith<GenerateNameFromPrimitives>(context)) {
-                return name.replace("Primitive", primitive.typeName)
+                return name.specialize(primitive)
             } else if (originalPsi is KtObjectDeclaration || originalPsi is KtConstructor<*>) {
                 val containingPsi = original.containingDeclaration?.findPsi() ?: return null
                 if (containingPsi is KtClass && containingPsi.isAnnotatedWith<GenerateNameFromPrimitives>(context)) {
-                    return name.replace("Primitive", primitive.typeName)
+                    return name.specialize(primitive)
                 }
             }
             return null
         }
     }
 
-    /** Simple name replacements used to replace calls to functions and classes */
-    private fun getSimpleNameReplacements(): Map<String, (Primitive<*, *>) -> String> {
-        val replacements = HashMap<String, (Primitive<*, *>) -> String>()
-        replacements.putAll(defaultReplacements)
-
-        return replacements
-    }
+    private fun String.specialize(primitive: Primitive<*, *>) = replace("Primitive", primitive.typeName)
 }

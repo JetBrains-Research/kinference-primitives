@@ -7,12 +7,14 @@ import io.kinference.primitives.types.*
 
 @GenerateNameFromPrimitives
 class FilteringPrimitiveTest {
-    fun all(x: PrimitiveType) {
+    fun all(x: PrimitiveType) : PrimitiveType {
         val y = x
+        return y
     }
 
     @FilterPrimitives(exclude = [DataType.BOOLEAN])
-    fun numbers(x: PrimitiveType) {
+    fun numbers(x: PrimitiveType): PrimitiveType {
         val y = x * x
+        return y.toPrimitive()
     }
 }

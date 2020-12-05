@@ -10,7 +10,7 @@ import org.jetbrains.kotlin.psi.KtImportDirective
 import org.jetbrains.kotlin.psi.psiUtil.nextLeafs
 import org.jetbrains.kotlin.resolve.BindingContext
 
-class RemovalProcessor(private val context: BindingContext, private val builder: StringBuilder) {
+class RemovalProcessor(private val context: BindingContext) {
     companion object {
         private val WHITESPACE_TO_DELETE: Key<Boolean> = Key.create("WHITESPACE_TO_DELETE")
 

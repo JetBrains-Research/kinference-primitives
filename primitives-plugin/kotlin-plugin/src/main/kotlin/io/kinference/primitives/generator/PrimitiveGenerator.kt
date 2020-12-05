@@ -27,7 +27,7 @@ class PrimitiveGenerator(
         for (primitive in types.flatMap { it.toPrimitive() }.toSet()) {
             val builder = StringBuilder()
 
-            val removalProcessor = RemovalProcessor(context, builder)
+            val removalProcessor = RemovalProcessor(context)
             val replacementProcessor = ReplacementProcessor(context)
 
             file.accept(object : KtDefaultVisitor() {
