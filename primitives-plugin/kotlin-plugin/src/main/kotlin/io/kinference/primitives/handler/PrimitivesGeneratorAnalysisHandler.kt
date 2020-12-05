@@ -1,28 +1,29 @@
 package io.kinference.primitives.handler
 
 import io.kinference.primitives.annotations.GeneratePrimitives
-import io.kinference.primitives.annotations.GenerateNameFromPrimitives
 import io.kinference.primitives.generator.PrimitiveGenerator
-import io.kinference.primitives.generator.ReplacementProcessor
 import io.kinference.primitives.ic.ICCache
-import io.kinference.primitives.utils.psi.*
+import io.kinference.primitives.utils.psi.isAnnotatedWith
 import org.jetbrains.kotlin.analyzer.AnalysisResult
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.com.intellij.openapi.project.Project
-import org.jetbrains.kotlin.container.ComponentProvider
-import org.jetbrains.kotlin.container.get
-import org.jetbrains.kotlin.context.ProjectContext
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
-import org.jetbrains.kotlin.library.metadata.KlibMetadataProtoBuf.fqName
-import org.jetbrains.kotlin.name.FqName
-import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.resolve.*
+import org.jetbrains.kotlin.resolve.BindingTrace
 import org.jetbrains.kotlin.resolve.jvm.extensions.AnalysisHandlerExtension
-import org.jetbrains.kotlin.resolve.lazy.ResolveSession
 import java.io.File
 import java.nio.file.Files
+import kotlin.collections.Collection
+import kotlin.collections.HashMap
+import kotlin.collections.Set
+import kotlin.collections.emptyList
+import kotlin.collections.filter
+import kotlin.collections.flatten
+import kotlin.collections.forEach
+import kotlin.collections.isNotEmpty
+import kotlin.collections.set
+import kotlin.collections.toMutableSet
 import kotlin.streams.toList
 
 class PrimitivesGeneratorAnalysisHandler(
@@ -30,26 +31,22 @@ class PrimitivesGeneratorAnalysisHandler(
     private val outputDir: File,
     incrementalDir: File
 ) : AnalysisHandlerExtension {
-    companion object {
-    }
-
     private val cache = ICCache(incrementalDir)
 
-    override fun doAnalysis(
+    override fun analysisCompleted(
         project: Project,
         module: ModuleDescriptor,
-        projectContext: ProjectContext,
-        files: Collection<KtFile>,
-        bindingTrace: BindingTrace,
-        componentProvider: ComponentProvider
+        bindingTrace: BindingTrace, files: Collection<KtFile>
     ): AnalysisResult? {
-        val resolveSession = componentProvider.get<ResolveSession>()
         val context = bindingTrace.bindingContext
 
         outputDir.mkdirs()
 
-        val allInputs = files.filter { resolveSession.getFileAnnotations(it).hasAnnotation(GeneratePrimitives::class.fqName) }
+        val allInputs = files.filter { it.isAnnotatedWith<GeneratePrimitives>(context) }
         val allOutputs = Files.walk(outputDir.toPath()).filter(Files::isRegularFile).map { it.toFile() }.toList().toMutableSet()
+
+        val moreFiles = cache.getMoreFiles(allInputs)
+        if (moreFiles.isNotEmpty()) return AnalysisResult.RetryWithAdditionalRoots(context, module, emptyList(), moreFiles, true )
 
         val (upToDate, notUpToDate) = cache.getState(allInputs, allOutputs)
 
@@ -57,15 +54,9 @@ class PrimitivesGeneratorAnalysisHandler(
 
         notUpToDate.outputs.forEach { it.delete() }
 
-        //recreate
-        //TODO-tanvd should be allInputs here
-        componentProvider.get<LazyTopDownAnalyzer>().analyzeDeclarations(TopDownAnalysisMode.TopLevelDeclarations, notUpToDate.inputs)
-
-        val replacementContext = ReplacementProcessor.prepareGlobalContext(context, notUpToDate.inputs.toSet())
-
         val inputsToOutputs = HashMap<KtFile, Set<File>>()
         for (input in notUpToDate.inputs) {
-            val result = PrimitiveGenerator(input, context, outputDir, collector, replacementContext).generate()
+            val result = PrimitiveGenerator(input, context, outputDir, collector).generate()
             inputsToOutputs[input] = result
         }
 
@@ -77,7 +68,7 @@ class PrimitivesGeneratorAnalysisHandler(
             inputsToOutputs.isEmpty() -> null
             else -> {
                 AnalysisResult.RetryWithAdditionalRoots(
-                    bindingContext = bindingTrace.bindingContext,
+                    bindingContext = context,
                     moduleDescriptor = module,
                     additionalKotlinRoots = inputsToOutputs.values.flatten(),
                     additionalJavaRoots = emptyList(),

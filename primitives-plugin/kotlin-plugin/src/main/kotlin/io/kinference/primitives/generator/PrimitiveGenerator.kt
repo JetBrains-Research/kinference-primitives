@@ -13,8 +13,10 @@ import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.resolve.BindingContext
 import java.io.File
 
-class PrimitiveGenerator(private val file: KtFile, private val context: BindingContext, private val output: File,
-                         private val collector: MessageCollector, private val replacementContext: ReplacementProcessor.GlobalReplacementContext) {
+class PrimitiveGenerator(
+    private val file: KtFile, private val context: BindingContext, private val output: File,
+    private val collector: MessageCollector
+) {
 
     private data class PrimitiveContext(val type1: Primitive<*, *>? = null, val type2: Primitive<*, *>? = null, val type3: Primitive<*, *>? = null)
 
@@ -26,7 +28,7 @@ class PrimitiveGenerator(private val file: KtFile, private val context: BindingC
             val builder = StringBuilder()
 
             val removalProcessor = RemovalProcessor(context, builder)
-            val replacementProcessor = ReplacementProcessor(replacementContext, context)
+            val replacementProcessor = ReplacementProcessor(context)
 
             file.accept(object : KtDefaultVisitor() {
                 private var currentPrimitive = primitive

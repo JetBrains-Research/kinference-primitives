@@ -4,39 +4,13 @@ import io.kinference.primitives.annotations.GenerateNameFromPrimitives
 import io.kinference.primitives.handler.Primitive
 import io.kinference.primitives.types.*
 import io.kinference.primitives.utils.psi.*
+import org.jetbrains.kotlin.js.resolve.diagnostics.findPsi
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
 
-class ReplacementProcessor(private val replacementContext: GlobalReplacementContext, private val context: BindingContext) {
-    data class GlobalReplacementContext(val classes: Set<KtClass>, val functions: Set<KtNamedFunction>)
-
+class ReplacementProcessor(private val context: BindingContext) {
     companion object {
-        fun prepareGlobalContext(context: BindingContext, files: Set<KtFile>): GlobalReplacementContext {
-            val classes = HashSet<KtClass>()
-            val functions = HashSet<KtNamedFunction>()
-            for (file in files) {
-
-                file.accept(object : KtDefaultVisitor() {
-                    override fun visitClass(klass: KtClass) {
-                        if (klass.isAnnotatedWith<GenerateNameFromPrimitives>(context)) {
-                            classes.add(klass)
-                        }
-                    }
-
-                    override fun visitNamedFunction(function: KtNamedFunction) {
-                        if (function.isAnnotatedWith<GenerateNameFromPrimitives>(context)) {
-                            functions.add(function)
-                        }
-                    }
-
-                })
-            }
-
-            return GlobalReplacementContext(classes, functions)
-        }
-
-
         private val defaultReplacements: Map<String, (Primitive<*, *>) -> String> = mapOf(
             (DataType::class.qualifiedName!! + ".${DataType.UNKNOWN.name}") to { it.dataType.name },
             (PrimitiveType::class.java.`package`.name + ".toPrimitive") to { "to${it.typeName}" },
@@ -73,28 +47,31 @@ class ReplacementProcessor(private val replacementContext: GlobalReplacementCont
     }
 
     fun getReplacement(expression: KtSimpleNameExpression, primitive: Primitive<*, *>): String? {
-        val reference = context[BindingContext.REFERENCE_TARGET, expression] ?: return null
-        val type = reference.forced().fqNameSafe.asString()
+        val name = expression.text?.takeIf { it.contains("Primitive") } ?: return null
+
+        val reference = context[BindingContext.REFERENCE_TARGET, expression]?.forced() ?: return null
+        val type = reference.fqNameSafe.asString()
         if (expression.text != "this" && type in replacements) {
             return replacements[type]!!.invoke(primitive)
+        } else {
+            val original = reference.original
+            val originalPsi = original.findPsi()
+            if ((originalPsi is KtNamedFunction || originalPsi is KtClass) && (originalPsi as KtAnnotated).isAnnotatedWith<GenerateNameFromPrimitives>(context)) {
+                return name.replace("Primitive", primitive.typeName)
+            } else if (originalPsi is KtObjectDeclaration || originalPsi is KtConstructor<*>) {
+                val containingPsi = original.containingDeclaration?.findPsi() ?: return null
+                if (containingPsi is KtClass && containingPsi.isAnnotatedWith<GenerateNameFromPrimitives>(context)) {
+                    return name.replace("Primitive", primitive.typeName)
+                }
+            }
+            return null
         }
-        return null
     }
 
     /** Simple name replacements used to replace calls to functions and classes */
     private fun getSimpleNameReplacements(): Map<String, (Primitive<*, *>) -> String> {
         val replacements = HashMap<String, (Primitive<*, *>) -> String>()
         replacements.putAll(defaultReplacements)
-
-        for (klass in replacementContext.classes) {
-            replacements[klass.qualifiedName] = { klass.name!!.replace("Primitive", it.typeName) }
-            replacements[klass.qualifiedName + ".<init>"] = { klass.name!!.replace("Primitive", it.typeName) }
-            replacements[klass.qualifiedName + ".Companion"] = { klass.name!!.replace("Primitive", it.typeName) }
-        }
-
-        for (function in replacementContext.functions) {
-            replacements[function.qualifiedName] = { function.name!!.replace("Primitive", it.typeName) }
-        }
 
         return replacements
     }

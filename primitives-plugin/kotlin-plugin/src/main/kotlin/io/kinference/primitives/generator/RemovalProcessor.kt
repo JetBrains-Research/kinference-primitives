@@ -1,21 +1,20 @@
 package io.kinference.primitives.generator
 
-import io.kinference.primitives.types.*
+import io.kinference.primitives.types.PrimitiveArray
+import io.kinference.primitives.types.PrimitiveType
 import org.jetbrains.kotlin.com.intellij.openapi.util.Key
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.com.intellij.psi.PsiWhiteSpace
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtImportDirective
 import org.jetbrains.kotlin.psi.psiUtil.nextLeafs
-import org.jetbrains.kotlin.psi.psiUtil.prevLeafs
 import org.jetbrains.kotlin.resolve.BindingContext
-import java.lang.StringBuilder
 
 class RemovalProcessor(private val context: BindingContext, private val builder: StringBuilder) {
     companion object {
         private val WHITESPACE_TO_DELETE: Key<Boolean> = Key.create("WHITESPACE_TO_DELETE")
 
-        private val importsToRemove = setOf(PrimitiveType::class.qualifiedName, PrimitiveArray::class.qualifiedName,)
+        private val importsToRemove = setOf(PrimitiveType::class.qualifiedName, PrimitiveArray::class.qualifiedName)
     }
 
     fun shouldRemoveImport(directive: KtImportDirective): Boolean {
@@ -33,17 +32,8 @@ class RemovalProcessor(private val context: BindingContext, private val builder:
 
     fun prepareRemoval(element: PsiElement) {
         val nextElement = element.nextLeafs.firstOrNull()
-        if (nextElement is PsiWhiteSpace) {
-            if (nextElement.text.isOneNewLine()) {
-                nextElement.putUserData(WHITESPACE_TO_DELETE, true)
-            }
-        }
-
-        val prevElement = element.prevLeafs.firstOrNull()
-        if (prevElement is PsiWhiteSpace && !shouldRemoveWhiteSpace(prevElement)) {
-            if (prevElement.text.isOneNewLine()) {
-                builder.deleteCharAt(builder.length - 1)
-            }
+        if (nextElement is PsiWhiteSpace && nextElement.text.isOneNewLine()) {
+            nextElement.putUserData(WHITESPACE_TO_DELETE, true)
         }
     }
 

@@ -40,6 +40,16 @@ class ICCache(incrementalDir: File) {
             manifestFile.writeText(JSON.string(Manifest.serializer(), value))
         }
 
+    fun getMoreFiles(inputs: Collection<KtFile>): List<File> {
+        val manifest = manifest
+
+        if (manifest.isUpToDate()) return emptyList()
+
+        val filePaths = inputs.map { it.virtualFile.canonicalPath!! }.toSet()
+        val toAskMore = manifest.inputsToOutputs.keys.filter { it.file !in filePaths }
+        return toAskMore.map { File(it.file) }.filter { it.exists() }
+    }
+
     fun getState(inputs: Collection<KtFile>, outputs: Collection<File>): State {
         val manifest = manifest
 
