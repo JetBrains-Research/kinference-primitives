@@ -7,12 +7,12 @@ import org.jetbrains.kotlin.psi.KtFile
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 
-fun MessageCollector.report(severity: CompilerMessageSeverity, element: KtElement, message: String){
+internal fun MessageCollector.report(severity: CompilerMessageSeverity, element: KtElement, message: String){
     report(severity, message, element.getLocation())
 }
 
 @OptIn(ExperimentalContracts::class)
-fun MessageCollector.require(severity: CompilerMessageSeverity, element: KtElement, condition: Boolean, message: () -> String) {
+internal fun MessageCollector.require(severity: CompilerMessageSeverity, element: KtElement, condition: Boolean, message: () -> String) {
     contract {
         returns() implies condition
     }
@@ -22,7 +22,6 @@ fun MessageCollector.require(severity: CompilerMessageSeverity, element: KtEleme
 }
 
 private fun KtElement.getLocation(): CompilerMessageSourceLocation? {
-
     val lineToColumn = if (this !is KtFile) StringUtil.offsetToLineColumn(containingKtFile.text, textOffset) else null
     return CompilerMessageLocation.create(containingKtFile.virtualFilePath, lineToColumn?.line ?: 1, lineToColumn?.line ?: 1, null)
 }

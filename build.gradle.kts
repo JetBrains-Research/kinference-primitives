@@ -13,7 +13,27 @@ subprojects {
     apply {
         plugin("kotlin")
         plugin("tanvd.kosogor")
-        plugin("io.gitlab.arturbosch.detekt")
+    }
+
+    if (name != "kotlin-plugin-test") {
+        apply {
+            plugin("io.gitlab.arturbosch.detekt")
+        }
+
+        detekt {
+            parallel = true
+
+            config = rootProject.files("detekt.yml")
+
+            reports {
+                xml {
+                    enabled = false
+                }
+                html {
+                    enabled = false
+                }
+            }
+        }
     }
 
     repositories {
@@ -27,21 +47,6 @@ subprojects {
             languageVersion = "1.4"
             apiVersion = "1.4"
             freeCompilerArgs = freeCompilerArgs + listOf("-Xopt-in=kotlin.RequiresOptIn", "-Xopt-in=kotlin.ExperimentalUnsignedTypes")
-        }
-    }
-
-    detekt {
-        parallel = true
-
-        config = rootProject.files("detekt.yml")
-
-        reports {
-            xml {
-                enabled = false
-            }
-            html {
-                enabled = false
-            }
         }
     }
 

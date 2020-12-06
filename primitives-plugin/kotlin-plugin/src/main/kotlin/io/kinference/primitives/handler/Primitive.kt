@@ -4,7 +4,7 @@ import io.kinference.primitives.types.DataType
 import java.util.*
 import kotlin.reflect.KClass
 
-class Primitive<Type : Any, ArrayType : Any>(val dataType: DataType, type: KClass<Type>, arrayType: KClass<ArrayType>) {
+internal class Primitive<Type : Any, ArrayType : Any>(val dataType: DataType, type: KClass<Type>, arrayType: KClass<ArrayType>) {
     companion object {
         private val ALL = EnumMap<DataType, Primitive<*, *>>(DataType::class.java)
 

@@ -4,7 +4,7 @@ import org.jetbrains.kotlin.com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.com.intellij.psi.impl.source.tree.LeafPsiElement
 import org.jetbrains.kotlin.psi.KtVisitorVoid
 
-abstract class KtDefaultVisitor : KtVisitorVoid() {
+internal abstract class KtDefaultVisitor : KtVisitorVoid() {
     protected open fun shouldVisitElement(element: PsiElement) = true
 
     override fun visitElement(element: PsiElement) {

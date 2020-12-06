@@ -6,6 +6,12 @@ import org.gradle.api.provider.Provider
 import org.gradle.plugins.ide.idea.model.IdeaModel
 import org.jetbrains.kotlin.gradle.plugin.*
 
+/**
+ * Gradle sub-plugin of Primitives Generator kotlin plugin.
+ *
+ * It performs linkin between kotlin-compiler plugin and extensions
+ * in Gradle script.
+ */
 @Suppress("unused")
 class PrimitivesGradleSubPlugin : KotlinCompilerPluginSupportPlugin {
     override fun apply(target: Project) {
@@ -44,6 +50,10 @@ class PrimitivesGradleSubPlugin : KotlinCompilerPluginSupportPlugin {
     override fun getPluginArtifact(): SubpluginArtifact = SubpluginArtifact("io.kinference.primitives", "kotlin-plugin", VERSION)
 
     companion object {
+        /**
+         * Current version of kotlin plugin.
+         * Should be updated with each release
+         */
         const val VERSION = "0.1.6"
     }
 }

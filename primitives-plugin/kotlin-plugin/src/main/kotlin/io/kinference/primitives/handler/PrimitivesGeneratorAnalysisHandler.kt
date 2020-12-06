@@ -25,7 +25,7 @@ import kotlin.collections.set
 import kotlin.collections.toMutableSet
 import kotlin.streams.toList
 
-class PrimitivesGeneratorAnalysisHandler(
+internal class PrimitivesGeneratorAnalysisHandler(
     private val collector: MessageCollector,
     private val outputDir: File,
     incrementalDir: File

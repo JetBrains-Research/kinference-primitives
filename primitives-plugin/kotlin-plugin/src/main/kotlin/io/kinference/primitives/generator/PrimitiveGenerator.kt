@@ -17,7 +17,7 @@ import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.resolve.BindingContext
 import java.io.File
 
-class PrimitiveGenerator(
+internal class PrimitiveGenerator(
     private val file: KtFile, private val context: BindingContext, private val output: File,
     private val collector: MessageCollector
 ) {
@@ -29,8 +29,9 @@ class PrimitiveGenerator(
 
         val types = file.getAnnotation<GeneratePrimitives>(context).getTypes(context, GeneratePrimitives::types)
         collector.require(CompilerMessageSeverity.WARNING, file, types.isNotEmpty()) {
-            "There are no `DataType`s specified in ${GeneratePrimitives::class.simpleName} annotation. It would lead to omitting this file during generation"
+            "There are no `DataType`s specified in @${GeneratePrimitives::class.simpleName}. It would lead to omitting of file during generation"
         }
+
         for (primitive in types.flatMap { it.toPrimitive() }.toSet()) {
             val builder = StringBuilder()
 
@@ -42,7 +43,8 @@ class PrimitiveGenerator(
 
                 private fun KtElement.withPrimitive(primitive: Primitive<*, *>?, body: () -> Unit) {
                     collector.require(CompilerMessageSeverity.ERROR, this, primitive != null) {
-                        "Primitive was bound with ${BindPrimitives::class.simpleName} sub-annotation, but outer expression is not annotated with ${BindPrimitives::class.simpleName}"
+                        "Primitive was bound with @${BindPrimitives::class.simpleName} sub-annotation," +
+                            " but outer expression is not annotated with @${BindPrimitives::class.simpleName}"
                     }
 
                     val tmp = currentPrimitive
@@ -80,7 +82,6 @@ class PrimitiveGenerator(
                         return
                     }
 
-                    //TODO check
                     return super.visitImportDirective(importDirective)
                 }
 
@@ -94,8 +95,11 @@ class PrimitiveGenerator(
                             val primitives3 = annotation.getTypes(context, BindPrimitives::type3).flatMap { it.toPrimitive() }.toSet()
 
 
-                            collector.require(CompilerMessageSeverity.WARNING, annotation, false) {
-                                "${BindPrimitives::class.simpleName} annotation all types are empty, it would lead to omitting of the whole function"
+                            collector.require(
+                                CompilerMessageSeverity.WARNING, annotation,
+                                primitives1.isNotEmpty() || primitives2.isNotEmpty() || primitives3.isNotEmpty()
+                            ) {
+                                "All arguments of @${BindPrimitives::class.simpleName} are empty. It would lead to omitting of the function during generation."
                             }
 
                             val combinations = crossProduct(primitives1, primitives2, primitives3)

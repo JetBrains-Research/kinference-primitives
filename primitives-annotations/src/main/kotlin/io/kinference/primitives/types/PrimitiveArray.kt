@@ -1,7 +1,16 @@
+@file:Suppress("UNUSED_PARAMETER", "unused", "MemberVisibilityCanBePrivate", "UndocumentedPublicProperty", "UndocumentedPublicFunction")
+
 package io.kinference.primitives.types
 
-
-@Suppress("unused", "UNUSED_PARAMETER", "MemberVisibilityCanBePrivate")
+/**
+ * Representation of primitive array (like [IntArray] or [BooleanArray]) that
+ * is used in code that should be specialized.
+ *
+ * So, basically [PrimitiveArray] should be used as a substitution of some specific
+ * type of array in code where you'd like to generate primitive specializations.
+ *
+ * Consider it some kind of C++ template variable.
+ */
 class PrimitiveArray(val size: Int) {
     constructor(size: Int, init: (Int) -> Any) : this(size)
 

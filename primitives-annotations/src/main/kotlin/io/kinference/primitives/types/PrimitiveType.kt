@@ -1,9 +1,15 @@
-@file:Suppress("unused", "UNUSED_PARAMETER")
+@file:Suppress("unused", "UNUSED_PARAMETER", "UndocumentedPublicProperty", "UndocumentedPublicFunction")
 
 package io.kinference.primitives.types
 
 /**
- * Primitive type that can represent only number types
+ * Representation of primitive type (like [Int] or [Boolean]) that
+ * is used in code that should be specialized.
+ *
+ * So, basically [PrimitiveType] should be used as a substitution of some specific
+ * primitive type in code where you'd like to generate primitive specializations.
+ *
+ * Consider it some kind of C++ template variable.
  */
 abstract class PrimitiveType : Number() {
     companion object {

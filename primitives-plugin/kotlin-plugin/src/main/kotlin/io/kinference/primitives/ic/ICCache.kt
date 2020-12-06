@@ -6,11 +6,11 @@ import kotlinx.serialization.Serializable
 import org.jetbrains.kotlin.psi.KtFile
 import java.io.File
 
-class ICCache(incrementalDir: File) {
+internal class ICCache(incrementalDir: File) {
     @Serializable
-    data class Manifest(val inputsToOutputs: Map<FileData, Set<FileData>> = emptyMap()) {
+    internal data class Manifest(val inputsToOutputs: Map<FileData, Set<FileData>> = emptyMap()) {
         @Serializable
-        data class FileData(val file: String, val hash: String) {
+        internal data class FileData(val file: String, val hash: String) {
             constructor(file: KtFile) : this(file.virtualFile.canonicalPath!!, file.text.sha256())
             constructor(file: File) : this(file.canonicalPath, file.sha256())
 
@@ -28,7 +28,7 @@ class ICCache(incrementalDir: File) {
         }
     }
 
-    data class State(val upToDate: UpToDate, val notUpToDate: NotUpToDate) {
+    internal data class State(val upToDate: UpToDate, val notUpToDate: NotUpToDate) {
         data class UpToDate(val inputsToOutputs: Map<Manifest.FileData, Set<Manifest.FileData>>)
         data class NotUpToDate(val inputs: Set<KtFile>, val outputs: Set<File>)
     }

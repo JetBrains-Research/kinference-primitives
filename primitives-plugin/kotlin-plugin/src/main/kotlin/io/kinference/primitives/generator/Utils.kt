@@ -14,21 +14,21 @@ import org.jetbrains.kotlin.resolve.BindingContext
 import kotlin.reflect.KProperty
 
 
-fun DataType.toPrimitive(): Set<Primitive<*, *>> = this.resolve().map { Primitive.of(it) }.toSet()
+internal fun DataType.toPrimitive(): Set<Primitive<*, *>> = this.resolve().map { Primitive.of(it) }.toSet()
 
-fun KtAnnotationEntry.getTypes(context: BindingContext, property: KProperty<Array<out DataType>>): List<DataType> {
+internal fun KtAnnotationEntry.getTypes(context: BindingContext, property: KProperty<Array<out DataType>>): List<DataType> {
     return getEnumValueArray(context, property.name, DataType::valueOf)
 }
 
 
-fun KtClass.getExcludes(context: BindingContext) = (this as KtAnnotated).getExcludes(context)
-fun KtNamedFunction.getExcludes(context: BindingContext) = (this as KtAnnotated).getExcludes(context)
+internal fun KtClass.getExcludes(context: BindingContext) = (this as KtAnnotated).getExcludes(context)
+internal fun KtNamedFunction.getExcludes(context: BindingContext) = (this as KtAnnotated).getExcludes(context)
 private fun KtAnnotated.getExcludes(context: BindingContext): List<DataType> {
     return getAnnotationOrNull<FilterPrimitives>(context)?.getTypes(context, FilterPrimitives::exclude) ?: emptyList()
 }
 
 
-fun KtAnnotationEntry.isPluginAnnotation(context: BindingContext): Boolean {
+internal fun KtAnnotationEntry.isPluginAnnotation(context: BindingContext): Boolean {
     return isAnnotation<GeneratePrimitives>(context) ||
         isAnnotation<GenerateNameFromPrimitives>(context) ||
         isAnnotation<BindPrimitives>(context) ||
@@ -38,12 +38,12 @@ fun KtAnnotationEntry.isPluginAnnotation(context: BindingContext): Boolean {
         isAnnotation<FilterPrimitives>(context)
 }
 
-fun DeclarationDescriptor.isNamedFunction() = findPsi() is KtNamedFunction
-fun DeclarationDescriptor.isKtClass() = findPsi() is KtClass
-fun DeclarationDescriptor.isCompanion() = findPsi() is KtObjectDeclaration && containingDeclaration?.findPsi() is KtClass
-fun DeclarationDescriptor.isConstructor() = findPsi() is KtConstructor<*> && containingDeclaration?.findPsi() is KtClass
+internal fun DeclarationDescriptor.isNamedFunction() = findPsi() is KtNamedFunction
+internal fun DeclarationDescriptor.isKtClass() = findPsi() is KtClass
+internal fun DeclarationDescriptor.isCompanion() = findPsi() is KtObjectDeclaration && containingDeclaration?.findPsi() is KtClass
+internal fun DeclarationDescriptor.isConstructor() = findPsi() is KtConstructor<*> && containingDeclaration?.findPsi() is KtClass
 
-fun KtNamedDeclaration.specialize(primitive: Primitive<*, *>, collector: MessageCollector): String {
+internal fun KtNamedDeclaration.specialize(primitive: Primitive<*, *>, collector: MessageCollector): String {
     val name = name!!
     collector.require(CompilerMessageSeverity.WARNING, this, "Primitive" in name) {
         "Named declaration does not contain \"Primitive\" substring in name, but its name should be specialized. Most likely this problem would lead to redeclaration compile error."
@@ -51,5 +51,5 @@ fun KtNamedDeclaration.specialize(primitive: Primitive<*, *>, collector: Message
     return name.specialize(primitive)
 }
 
-fun String.specialize(primitive: Primitive<*, *>) = replace("Primitive", primitive.typeName)
+internal fun String.specialize(primitive: Primitive<*, *>) = replace("Primitive", primitive.typeName)
 

@@ -3,6 +3,9 @@ package io.kinference.primitives.types
 /**
  * Types of primitives that can be created during generation.
  *
+ * There are two special groups - [NUMBER] and [ALL], first includes
+ * all number types, second includes [NUMBER] and [BOOLEAN]
+ *
  * Note, that unsigned values requires special care, since right now all of
  * them are considered experimental.
  *
@@ -30,6 +33,10 @@ enum class DataType {
 
     UNKNOWN;
 
+    /**
+     * Resolve DataType into actual primitives -- would flatten groups into collection of primitives.
+     * Primitives would remain the same
+     */
     fun resolve(): Set<DataType> {
         return when(this) {
             ALL -> setOf(BYTE, SHORT, INT, LONG, UBYTE, USHORT, UINT, ULONG, FLOAT, DOUBLE, BOOLEAN)

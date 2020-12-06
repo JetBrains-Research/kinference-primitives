@@ -3,13 +3,13 @@ build:
 
 comments:
   UndocumentedPublicClass:
-    active: false
+    active: true
     excludes: [ '**/test/**' ]
   UndocumentedPublicFunction:
-    active: false
+    active: true
     excludes: [ '**/test/**' ]
   UndocumentedPublicProperty:
-    active: false
+    active: true
     excludes: [ '**/test/**' ]
 
 complexity:

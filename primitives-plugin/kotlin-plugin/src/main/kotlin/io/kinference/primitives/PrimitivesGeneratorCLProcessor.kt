@@ -5,6 +5,10 @@ import org.jetbrains.kotlin.compiler.plugin.*
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import java.io.File
 
+/**
+ * Main interface of Primitives generator plugin that
+ * interacts with Gradle sub-plugin
+ */
 @AutoService(CommandLineProcessor::class)
 class PrimitivesGeneratorCLProcessor : CommandLineProcessor {
     override val pluginId: String = PLUGIN_ID
@@ -18,8 +22,10 @@ class PrimitivesGeneratorCLProcessor : CommandLineProcessor {
     }
 
     companion object {
+        /** Global constant with plugin identifier */
         const val PLUGIN_ID = "io.kinference.primitives.kotlin-plugin"
 
+        /** Folder to which files should be generated */
         val OUTPUT_DIR_OPTION =
             CliOption(
                 optionName = "outputDir",
@@ -29,6 +35,7 @@ class PrimitivesGeneratorCLProcessor : CommandLineProcessor {
                 allowMultipleOccurrences = false
             )
 
+        /** Folder in which incremental cache of primitives plugin can create files */
         val INCREMENTAL_DIR_OPTION =
             CliOption(
                 optionName = "icOutputDir",

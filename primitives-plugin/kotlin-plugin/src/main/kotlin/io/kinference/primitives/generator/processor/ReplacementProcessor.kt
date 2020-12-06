@@ -10,10 +10,11 @@ import io.kinference.primitives.utils.psi.isAnnotatedWith
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.psi.psiUtil.isExtensionDeclaration
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
 
-class ReplacementProcessor(private val context: BindingContext, private val collector: MessageCollector) {
+internal class ReplacementProcessor(private val context: BindingContext, private val collector: MessageCollector) {
     companion object {
         private val defaultReplacements: Map<String, (Primitive<*, *>) -> String> = mapOf(
             (DataType::class.qualifiedName!! + ".${DataType.UNKNOWN.name}") to { it.dataType.name },
@@ -37,7 +38,7 @@ class ReplacementProcessor(private val context: BindingContext, private val coll
             return klass.specialize(primitive, collector)
         }
         collector.require(CompilerMessageSeverity.WARNING, klass, !klass.isTopLevel()) {
-            "Class it not annotated with ${GenerateNameFromPrimitives::class.simpleName}, so its name would not be specialized. It may lead to redeclaration compile error."
+            "Class is not annotated with ${GenerateNameFromPrimitives::class.simpleName}, so its name would not be specialized. It may lead to redeclaration compile error."
         }
         return null
     }
@@ -46,8 +47,8 @@ class ReplacementProcessor(private val context: BindingContext, private val coll
         if (function.isAnnotatedWith<GenerateNameFromPrimitives>(context)) {
             return function.specialize(primitive, collector)
         }
-        collector.require(CompilerMessageSeverity.WARNING, function, !function.isTopLevel) {
-            "Function it not annotated with ${GenerateNameFromPrimitives::class.simpleName}, so its name would not be specialized. It may lead to redeclaration compile error."
+        collector.require(CompilerMessageSeverity.WARNING, function, !function.isTopLevel || function.isExtensionDeclaration()) {
+            "Function is not annotated with ${GenerateNameFromPrimitives::class.simpleName}, so its name would not be specialized. It may lead to redeclaration compile error."
         }
         return null
     }
@@ -57,18 +58,18 @@ class ReplacementProcessor(private val context: BindingContext, private val coll
         val target = context[BindingContext.REFERENCE_TARGET, expression]?.forced() ?: return null
         val type = target.fqNameSafe.asString()
 
-        when {
+        return when {
             type in defaultReplacements -> {
-                return defaultReplacements[type]!!.invoke(primitive)
+                defaultReplacements[type]!!.invoke(primitive)
             }
             (target.isNamedFunction() || target.isKtClass()) && target.isAnnotatedWith<GenerateNameFromPrimitives>() -> {
-                return expression.text.specialize(primitive)
+                expression.text.specialize(primitive)
             }
             (target.isCompanion() || target.isConstructor()) && target.containingDeclaration!!.isAnnotatedWith<GenerateNameFromPrimitives>() -> {
-                return name.specialize(primitive)
+                name.specialize(primitive)
             }
+            else -> null
         }
-        return null
     }
 
 }

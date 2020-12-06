@@ -4,7 +4,7 @@ import io.kinference.primitives.PrimitivesGeneratorCLProcessor.Companion.PLUGIN_
 import org.jetbrains.kotlin.config.CompilerConfigurationKey
 import java.io.File
 
-object Keys {
+internal object Keys {
     val OUTPUT_DIR = CompilerConfigurationKey.create<File>("$PLUGIN_ID.outputDir")
     val INCREMENTAL_DIR = CompilerConfigurationKey.create<File>("$PLUGIN_ID.icOutputDir")
 }
