@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompile
+
 plugins {
     kotlin("jvm") version "1.4.20" apply true
     id("io.kinference.primitives") version "0.1.6"
