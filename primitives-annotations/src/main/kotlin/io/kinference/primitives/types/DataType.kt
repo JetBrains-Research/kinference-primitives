@@ -1,3 +1,5 @@
+@file:Suppress("MemberVisibilityCanBePrivate", "unused")
+
 package io.kinference.primitives.types
 
 /**
@@ -29,9 +31,7 @@ enum class DataType {
     BOOLEAN,
 
     ALL,
-    NUMBER,
-
-    UNKNOWN;
+    NUMBER;
 
     /**
      * Resolve DataType into actual primitives -- would flatten groups into collection of primitives.
@@ -43,5 +43,16 @@ enum class DataType {
             NUMBER -> setOf(BYTE, SHORT, INT, LONG, UBYTE, USHORT, UINT, ULONG, FLOAT, DOUBLE)
             else -> setOf(this)
         }
+    }
+
+    companion object {
+        /**
+         * Use this field to specify DataType with which file would be specialized.
+         *
+         * For example, if file is generated for [Boolean] then [DataType.CurrentPrimitive]
+         * would be replaced with [DataType.BOOLEAN]
+         */
+        val CurrentPrimitive: DataType
+            get() = error("This field should never be accessed in runtime")
     }
 }

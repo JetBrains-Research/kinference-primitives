@@ -54,6 +54,6 @@ class PrimitivesGradleSubPlugin : KotlinCompilerPluginSupportPlugin {
          * Current version of kotlin plugin.
          * Should be updated with each release
          */
-        const val VERSION = "0.1.6"
+        const val VERSION = "0.1.7"
     }
 }
