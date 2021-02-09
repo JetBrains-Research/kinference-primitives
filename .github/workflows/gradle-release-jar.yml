@@ -1,4 +1,4 @@
-name: Gradle Release
+name: Gradle Release Jars
 
 on: [ workflow_dispatch ]
 
