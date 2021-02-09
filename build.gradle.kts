@@ -16,6 +16,15 @@ subprojects {
         publishing {
             repositories {
                 mavenLocal()
+                maven {
+                    name = "GitHubPackages"
+                    url = uri("https://maven.pkg.github.com/JetBrains-Research/kinference-primitives")
+
+                    credentials {
+                        username = "TanVD"
+                        password = System.getenv("PACKAGES_KEY")
+                    }
+                }
             }
         }
     }
