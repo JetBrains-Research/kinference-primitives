@@ -14,5 +14,5 @@ import io.kinference.primitives.types.DataType
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
 annotation class FilterPrimitives(
-    val exclude: Array<DataType> = []
+    val exclude: Array<DataType> = emptyArray()
 )

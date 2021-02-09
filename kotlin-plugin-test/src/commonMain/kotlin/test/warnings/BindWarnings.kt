@@ -3,7 +3,7 @@ package test.warnings
 
 import io.kinference.primitives.annotations.*
 import io.kinference.primitives.types.DataType
-import javax.lang.model.type.PrimitiveType
+import io.kinference.primitives.types.PrimitiveType
 
 @GenerateNameFromPrimitives
 @BindPrimitives

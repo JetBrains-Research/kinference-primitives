@@ -20,9 +20,9 @@ import io.kinference.primitives.types.DataType
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.SOURCE)
 annotation class BindPrimitives(
-    val type1: Array<DataType> = [],
-    val type2: Array<DataType> = [],
-    val type3: Array<DataType> = []
+    val type1: Array<DataType> = emptyArray(),
+    val type2: Array<DataType> = emptyArray(),
+    val type3: Array<DataType> = emptyArray()
 ) {
     /**
      * Makes possible wiring of [DataType] from [type1] parameter

@@ -13,6 +13,7 @@ import org.jetbrains.kotlin.resolve.BindingTrace
 import org.jetbrains.kotlin.resolve.jvm.extensions.AnalysisHandlerExtension
 import java.io.File
 import java.nio.file.Files
+import java.util.stream.Collectors
 import kotlin.collections.Collection
 import kotlin.collections.HashMap
 import kotlin.collections.Set
@@ -23,7 +24,6 @@ import kotlin.collections.forEach
 import kotlin.collections.isNotEmpty
 import kotlin.collections.set
 import kotlin.collections.toMutableSet
-import kotlin.streams.toList
 
 internal class PrimitivesGeneratorAnalysisHandler(
     private val collector: MessageCollector,
@@ -43,10 +43,10 @@ internal class PrimitivesGeneratorAnalysisHandler(
         outputDir.mkdirs()
 
         val allInputs = files.filter { it.isAnnotatedWith<GeneratePrimitives>(context) }
-        val allOutputs = Files.walk(outputDir.toPath()).filter(Files::isRegularFile).map { it.toFile() }.toList().toMutableSet()
+        val allOutputs = Files.walk(outputDir.toPath()).filter(Files::isRegularFile).map { it.toFile() }.collect(Collectors.toList()).toMutableSet()
 
         val moreFiles = cache.getMoreFiles(allInputs)
-        if (moreFiles.isNotEmpty()) return AnalysisResult.RetryWithAdditionalRoots(context, module, emptyList(), moreFiles, true )
+        if (moreFiles.isNotEmpty()) return AnalysisResult.RetryWithAdditionalRoots(context, module, emptyList(), moreFiles, emptyList(), true )
 
         val (upToDate, notUpToDate) = cache.getState(allInputs, allOutputs)
 

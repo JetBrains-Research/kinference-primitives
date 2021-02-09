@@ -43,7 +43,7 @@ class PrimitivesGradleSubPlugin : KotlinCompilerPluginSupportPlugin {
     }
 
 
-    override fun isApplicable(kotlinCompilation: KotlinCompilation<*>): Boolean = kotlinCompilation.platformType == KotlinPlatformType.jvm
+    override fun isApplicable(kotlinCompilation: KotlinCompilation<*>): Boolean = kotlinCompilation.platformType == KotlinPlatformType.common
 
     override fun getCompilerPluginId(): String = PrimitivesGeneratorCLProcessor.PLUGIN_ID
 
@@ -54,6 +54,6 @@ class PrimitivesGradleSubPlugin : KotlinCompilerPluginSupportPlugin {
          * Current version of kotlin plugin.
          * Should be updated with each release
          */
-        const val VERSION = "0.1.7"
+        const val VERSION = "0.1.8"
     }
 }

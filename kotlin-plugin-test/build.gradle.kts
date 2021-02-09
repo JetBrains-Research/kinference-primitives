@@ -1,22 +1,38 @@
-import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompile
+import org.jetbrains.kotlin.gradle.dsl.KotlinCompile
 
 group = rootProject.group
 version = rootProject.version
 
-plugins {
-    idea
+kotlin {
+    jvm()
+    js {
+        browser()
+        nodejs()
+    }
+
+    sourceSets {
+        val commonMain by getting {
+            repositories {
+                jcenter()
+                gradlePluginPortal()
+            }
+
+            dependencies {
+                api(kotlin("stdlib"))
+                implementation(project(":primitives-annotations"))
+            }
+        }
+    }
 }
 
 dependencies {
-    implementation(kotlin("stdlib"))
     kotlinCompilerPluginClasspath(project(":primitives-plugin:kotlin-plugin"))
-    implementation(project(":primitives-annotations"))
 }
 
-val generatedDir = "$projectDir/src/main/kotlin-gen"
+val generatedDir = "$projectDir/src/commonMain/kotlin-gen"
 val incrementalDir = "$buildDir/"
 
-tasks.withType<KotlinJvmCompile> {
+tasks.withType<KotlinCompile<*>> {
     kotlinOptions {
         freeCompilerArgs = freeCompilerArgs + listOf(
             "-P",
@@ -27,14 +43,12 @@ tasks.withType<KotlinJvmCompile> {
     }
 }
 
-idea {
-    module.generatedSourceDirs.plusAssign(files(generatedDir))
-}
+tasks["compileKotlinJs"].dependsOn("compileKotlinJvm")
 
-tasks["compileKotlin"].outputs.dir(generatedDir)
+//tasks["compileKotlin"].outputs.dir(generatedDir)
 
 kotlin {
-    sourceSets["main"].apply {
+    sourceSets["commonMain"].apply {
         kotlin.srcDirs(generatedDir)
     }
 }

@@ -1,32 +1,30 @@
-import tanvd.kosogor.proxy.publishJar
-import tanvd.kosogor.proxy.publishPlugin
+import org.gradle.kotlin.dsl.provider.gradleKotlinDslOf
 
 group = rootProject.group
 version = rootProject.version
 
-dependencies {
-    api(kotlin("stdlib"))
-    implementation(project(":primitives-plugin:kotlin-plugin"))
-    implementation(kotlin("compiler-embeddable"))
-    implementation(kotlin("gradle-plugin-api", "1.4.20"))
+plugins {
+    `maven-publish`
 }
 
-publishJar {
-    publication {
-        artifactId = "io.kinference.primitives.gradle.plugin"
-    }
-}
+kotlin {
+    jvm()
 
-publishPlugin {
-    id = "io.kinference.primitives"
-    displayName = "primitives"
-    implementationClass = "io.kinference.primitives.gradle.PrimitivesGradleSubPlugin"
-    version = project.version.toString()
+    sourceSets {
+        val jvmMain by getting {
+            repositories {
+                jcenter()
+                gradlePluginPortal()
+            }
 
-    info {
-        description = "KInference Primitives Generator"
-        website = "https://github.com/JetBrains-Research/kinference-primitives"
-        vcsUrl = "https://github.com/JetBrains-Research/kinference-primitives"
-        tags.addAll(listOf("kotlin", "primitive", "performance", "generation"))
+            dependencies {
+                api(files(gradleKotlinDslOf(project)))
+                api(kotlin("stdlib"))
+
+                implementation(project(":primitives-plugin:kotlin-plugin"))
+                implementation(kotlin("compiler-embeddable"))
+                implementation(kotlin("gradle-plugin-api", "1.4.30"))
+            }
+        }
     }
 }
