@@ -5,7 +5,6 @@ version = rootProject.version
 
 plugins {
     id("com.gradle.plugin-publish") version "0.12.0"
-    `java-gradle-plugin`
     `maven-publish`
 }
 
