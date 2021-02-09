@@ -4,6 +4,8 @@ group = rootProject.group
 version = rootProject.version
 
 plugins {
+    id("com.gradle.plugin-publish") version "0.12.0"
+    `java-gradle-plugin`
     `maven-publish`
 }
 
@@ -19,11 +21,11 @@ kotlin {
 
             dependencies {
                 api(files(gradleKotlinDslOf(project)))
+                compileOnly(kotlin("gradle-plugin", "1.4.30"))
+
                 api(kotlin("stdlib"))
 
                 implementation(project(":primitives-plugin:kotlin-plugin"))
-                implementation(kotlin("compiler-embeddable"))
-                implementation(kotlin("gradle-plugin-api", "1.4.30"))
             }
         }
     }
