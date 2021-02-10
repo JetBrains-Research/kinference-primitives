@@ -3,9 +3,8 @@ version = rootProject.version
 
 kotlin {
     jvm()
-    js {
+    js(BOTH) {
         browser()
-        nodejs()
     }
 
     sourceSets {
