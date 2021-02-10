@@ -11,7 +11,7 @@ package io.kinference.primitives.types
  *
  * Consider it some kind of C++ template variable.
  */
-abstract class PrimitiveType : Number() {
+abstract class PrimitiveType {
     companion object {
         val MIN_VALUE: PrimitiveType
             get() = throw UnsupportedOperationException()
@@ -34,6 +34,13 @@ abstract class PrimitiveType : Number() {
     abstract operator fun unaryMinus(): PrimitiveType
 
     abstract operator fun compareTo(other: PrimitiveType): Int
+
+    abstract fun toByte(): Byte
+    abstract fun toShort(): Short
+    abstract fun toInt(): Int
+    abstract fun toLong(): Long
+    abstract fun toDouble(): Double
+    abstract fun toFloat(): Float
 
     abstract fun toPrimitive(): PrimitiveType
 }
