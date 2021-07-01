@@ -2,11 +2,11 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompile
 
 plugins {
     kotlin("jvm") version "1.4.30" apply true
-    id("io.kinference.primitives") version "0.1.10"
+    id("io.kinference.primitives") version "0.1.14"
 }
 
 group = "io.kinference.primitives"
-version = "0.1.10"
+version = "0.1.14"
 
 repositories {
     mavenCentral()
@@ -15,7 +15,7 @@ repositories {
 
 dependencies {
     implementation(kotlin("stdlib"))
-    api("io.kinference.primitives", "primitives-annotations", "0.1.10")
+    api("io.kinference.primitives", "primitives-annotations", "0.1.14")
 }
 
 tasks.withType<KotlinJvmCompile> {

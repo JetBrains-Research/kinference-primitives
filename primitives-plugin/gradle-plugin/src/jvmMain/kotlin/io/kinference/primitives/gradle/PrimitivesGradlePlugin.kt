@@ -17,7 +17,7 @@ open class PrimitivesGradlePlugin : Plugin<Project> {
                 val icManifestPath = project.primitives.incrementalCachePath?.let { project.file(it) } ?: project.buildDir
 
                 dependencies {
-                    kotlinCompilerPluginClasspath("io.kinference.primitives", "kotlin-plugin", "0.1.10")
+                    kotlinCompilerPluginClasspath("io.kinference.primitives", "kotlin-plugin", "0.1.14")
                 }
 
                 tasks.withType(KotlinCompile::class.java) {
