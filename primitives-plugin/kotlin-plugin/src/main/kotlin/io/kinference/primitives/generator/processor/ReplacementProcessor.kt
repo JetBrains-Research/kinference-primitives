@@ -16,11 +16,19 @@ import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
 
 internal class ReplacementProcessor(private val context: BindingContext, private val collector: MessageCollector) {
     companion object {
+        private fun toType(primitive: Primitive<*, *>): String {
+            return when (primitive.dataType) {
+                DataType.BYTE -> "toInt().toByte"
+                DataType.SHORT -> "toInt().toShort"
+                else -> "to${primitive.typeName}"
+            }
+        }
+
         private val defaultReplacements: Map<String, (Primitive<*, *>) -> String> = mapOf(
             (DataType::class.qualifiedName!! + ".Companion.${DataType.Companion::CurrentPrimitive.name}") to { it.dataType.name },
-            (PrimitiveType::class.java.`package`.name + ".toPrimitive") to { "to${it.typeName}" },
+            (PrimitiveType::class.java.`package`.name + ".toPrimitive") to this::toType,
 
-            (PrimitiveType::class.qualifiedName!! + ".toPrimitive") to { "to${it.typeName}" },
+            (PrimitiveType::class.qualifiedName!! + ".toPrimitive") to this::toType,
 
             (PrimitiveType::class.qualifiedName!!) to { it.typeName },
             (PrimitiveType::class.qualifiedName!! + ".<init>") to { it.typeName },

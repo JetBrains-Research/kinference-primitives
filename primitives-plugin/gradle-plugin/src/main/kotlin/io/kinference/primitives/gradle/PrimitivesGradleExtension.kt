@@ -13,7 +13,7 @@ open class PrimitivesPluginExtension {
      * It would be automatically added to source set and marked
      * as generated in IntelliJ IDEA
      */
-    var generationPath: String = "src/commonMain/kotlin-gen"
+    var generationPath: String? = null
 
     /**
      * Path to which plugin can save service information

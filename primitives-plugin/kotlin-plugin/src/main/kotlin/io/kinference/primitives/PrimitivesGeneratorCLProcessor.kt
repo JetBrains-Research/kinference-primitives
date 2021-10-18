@@ -1,6 +1,7 @@
 package io.kinference.primitives
 
 import com.google.auto.service.AutoService
+import io.kinference.primitives.utils.PluginConstants.PLUGIN_ID
 import org.jetbrains.kotlin.compiler.plugin.*
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import java.io.File
@@ -22,9 +23,6 @@ class PrimitivesGeneratorCLProcessor : CommandLineProcessor {
     }
 
     companion object {
-        /** Global constant with plugin identifier */
-        const val PLUGIN_ID = "io.kinference.primitives.kotlin-plugin"
-
         /** Folder to which files should be generated */
         val OUTPUT_DIR_OPTION =
             CliOption(

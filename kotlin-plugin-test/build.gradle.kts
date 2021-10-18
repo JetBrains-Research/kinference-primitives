@@ -3,6 +3,10 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinCompile
 group = rootProject.group
 version = rootProject.version
 
+plugins {
+    kotlin("multiplatform")
+}
+
 kotlin {
     jvm()
     js {
@@ -13,7 +17,6 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             repositories {
-                jcenter()
                 gradlePluginPortal()
             }
 
@@ -43,7 +46,8 @@ tasks.withType<KotlinCompile<*>> {
     }
 }
 
-tasks["compileKotlinJs"].dependsOn("compileKotlinJvm")
+tasks["compileKotlinJs"].dependsOn("compileKotlinMetadata")
+tasks["compileKotlinJvm"].dependsOn("compileKotlinMetadata")
 
 //tasks["compileKotlin"].outputs.dir(generatedDir)
 
