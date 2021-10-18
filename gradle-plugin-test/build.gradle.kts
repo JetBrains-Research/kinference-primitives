@@ -15,7 +15,7 @@ repositories {
 
 dependencies {
     implementation(kotlin("stdlib"))
-    api("io.kinference.primitives", "primitives-annotations", "0.1.14")
+    api("io.kinference.primitives", "primitives-annotations", "0.1.15")
 }
 
 tasks.withType<KotlinJvmCompile> {
