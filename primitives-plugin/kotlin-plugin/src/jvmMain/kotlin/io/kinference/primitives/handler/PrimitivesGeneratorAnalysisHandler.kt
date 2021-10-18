@@ -8,9 +8,10 @@ import org.jetbrains.kotlin.analyzer.AnalysisResult
 import org.jetbrains.kotlin.cli.common.messages.*
 import org.jetbrains.kotlin.com.intellij.openapi.project.Project
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
+import org.jetbrains.kotlin.platform.isCommon
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.resolve.BindingTrace
-import org.jetbrains.kotlin.resolve.jvm.extensions.AnalysisHandlerExtension
+import org.jetbrains.kotlin.resolve.extensions.AnalysisHandlerExtension
 import java.io.File
 import java.nio.file.Files
 import java.util.stream.Collectors
@@ -30,6 +31,7 @@ internal class PrimitivesGeneratorAnalysisHandler(
     private val outputDir: File,
     incrementalDir: File
 ) : AnalysisHandlerExtension {
+    private val moduleName = outputDir.name
     private val cache = ICCache(incrementalDir)
 
     override fun analysisCompleted(
@@ -39,16 +41,25 @@ internal class PrimitivesGeneratorAnalysisHandler(
         files: Collection<KtFile>
     ): AnalysisResult? {
         val context = bindingTrace.bindingContext
-
+        val isCommon = module.platform.isCommon()
         outputDir.mkdirs()
 
         val allInputs = files.filter { it.isAnnotatedWith<GeneratePrimitives>(context) }
         val allOutputs = Files.walk(outputDir.toPath()).filter(Files::isRegularFile).map { it.toFile() }.collect(Collectors.toList()).toMutableSet()
 
-        val moreFiles = cache.getMoreFiles(allInputs)
-        if (moreFiles.isNotEmpty()) return AnalysisResult.RetryWithAdditionalRoots(context, module, emptyList(), moreFiles, emptyList(), true )
+        val moreFiles = if (isCommon) {
+            cache.getMoreCommonFiles(allInputs)
+        } else {
+            cache.getMoreFiles(allInputs, moduleName) + cache.getMoreCommonFiles(allInputs)
+        }
 
-        val (upToDate, notUpToDate) = cache.getState(allInputs, allOutputs)
+        if (moreFiles.isNotEmpty()) return AnalysisResult.RetryWithAdditionalRoots(context, module, emptyList(), moreFiles, emptyList(), true)
+
+        val (upToDate, notUpToDate) = if (isCommon) {
+            cache.getCommonState(allInputs, allOutputs)
+        } else {
+            cache.getStateByModule(allInputs, allOutputs, moduleName)
+        }
 
         collector.report(CompilerMessageSeverity.LOGGING, "Primitives generator consider not up to date: $notUpToDate")
 
@@ -60,7 +71,11 @@ internal class PrimitivesGeneratorAnalysisHandler(
             inputsToOutputs[input] = result
         }
 
-        cache.updateManifest(upToDate, inputsToOutputs)
+        if (isCommon) {
+            cache.updateManifestCommon(upToDate, inputsToOutputs)
+        } else {
+            cache.updateManifest(moduleName, upToDate, inputsToOutputs)
+        }
 
         collector.report(CompilerMessageSeverity.LOGGING, "Primitives generator generated: $inputsToOutputs")
 

@@ -1,46 +1,69 @@
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompile
+import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 
 group = "io.kinference.primitives"
-version = "0.1.14"
+version = "0.1.15"
 
 plugins {
-    kotlin("multiplatform") version "1.4.30" apply false
-    `maven-publish`
+    kotlin("multiplatform") version "1.5.31" apply false
+    `maven-publish` apply true
 }
 
 subprojects {
-    if (name != "primitives-plugin") {
+    if (this.subprojects.isNotEmpty()) return@subprojects
+    if (this.name == "kotlin-plugin-test") {
         apply {
             plugin("org.jetbrains.kotlin.multiplatform")
-            plugin("maven-publish")
-        }
 
-        publishing {
-            repositories {
-                maven {
-                    name = "SpacePackages"
-                    url = uri("https://packages.jetbrains.team/maven/p/ki/maven")
-
-                    credentials {
-                        username = System.getenv("PUBLISHER_ID")
-                        password = System.getenv("PUBLISHER_KEY")
-                    }
-                }
-            }
         }
+        return@subprojects
     }
+
 
     repositories {
         mavenCentral()
         gradlePluginPortal()
     }
 
-    tasks.withType<KotlinJvmCompile> {
-        kotlinOptions {
-            jvmTarget = "11"
-            languageVersion = "1.4"
-            apiVersion = "1.4"
-            freeCompilerArgs = freeCompilerArgs + listOf("-Xopt-in=kotlin.RequiresOptIn", "-Xopt-in=kotlin.ExperimentalUnsignedTypes")
+    apply {
+        plugin("org.jetbrains.kotlin.multiplatform")
+        plugin("maven-publish")
+    }
+
+    publishing {
+        repositories {
+            maven {
+                name = "SpacePackages"
+                url = uri("https://packages.jetbrains.team/maven/p/ki/maven")
+
+                credentials {
+                    username = System.getenv("JB_SPACE_CLIENT_ID") ?: ""
+                    password = System.getenv("JB_SPACE_CLIENT_SECRET") ?: ""
+                }
+            }
+        }
+    }
+
+
+    extensions.getByType(KotlinMultiplatformExtension::class.java).apply {
+        sourceSets.all {
+            languageSettings {
+                optIn("kotlin.RequiresOptIn")
+                optIn("kotlin.time.ExperimentalTime")
+                optIn("kotlin.ExperimentalUnsignedTypes")
+                optIn("kotlinx.serialization.ExperimentalSerializationApi")
+            }
+
+            languageSettings {
+                apiVersion = "1.5"
+                languageVersion = "1.5"
+            }
+        }
+
+        tasks.withType<KotlinJvmCompile> {
+            kotlinOptions {
+                jvmTarget = "11"
+            }
         }
     }
 }

@@ -3,24 +3,29 @@ import org.gradle.kotlin.dsl.provider.gradleKotlinDslOf
 group = rootProject.group
 version = rootProject.version
 
+
 plugins {
     id("com.gradle.plugin-publish") version "0.12.0"
     `maven-publish`
 }
 
 kotlin {
-    jvm()
+    jvm {
+        withJava()
+    }
 
     sourceSets {
         val jvmMain by getting {
             repositories {
-                jcenter()
+                mavenCentral()
                 gradlePluginPortal()
             }
 
             dependencies {
                 api(files(gradleKotlinDslOf(project)))
-                compileOnly(kotlin("gradle-plugin", "1.4.30"))
+                implementation(kotlin("gradle-plugin"))
+                implementation(kotlin("compiler-embeddable"))
+                implementation(project(":primitives-plugin:utils"))
 
                 api(kotlin("stdlib"))
 
