@@ -17,7 +17,7 @@ kotlin {
     sourceSets {
         val jvmMain by getting {
             repositories {
-                jcenter()
+                mavenCentral()
                 gradlePluginPortal()
             }
 
