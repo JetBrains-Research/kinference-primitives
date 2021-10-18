@@ -11,6 +11,14 @@ plugins {
 
 subprojects {
     if (this.subprojects.isNotEmpty()) return@subprojects
+    if (this.name == "kotlin-plugin-test") {
+        apply {
+            plugin("org.jetbrains.kotlin.multiplatform")
+
+        }
+        return@subprojects
+    }
+
 
     repositories {
         mavenCentral()
