@@ -135,10 +135,10 @@ internal class ICCache(incrementalDir: File) {
         val toRegenerate = HashSet<KtFile>()
         val toRemove = HashSet<File>()
 
-        val unknown = getUnknownFilesByModule(manifest, outputs, module)
+        val unknown = getUnknownFilesByModule(manifest, actualOutputs, module)
         toRemove.addAll(unknown)
 
-        for (input in inputs) {
+        for (input in actualInputs) {
             val icInput = moduleInputsToOutputs.keys.find { it.file == input.virtualFilePath }
             if (icInput == null) {
                 toRegenerate.add(input)
@@ -150,13 +150,13 @@ internal class ICCache(incrementalDir: File) {
 
             if (icInput.hash != input.text.sha256()) {
                 toRegenerate.add(input)
-                toRemove.addAll(outputs.filter { it.canonicalPath in icOutputsPath })
+                toRemove.addAll(actualOutputs.filter { it.canonicalPath in icOutputsPath })
                 continue
             }
 
-            if (icOutputs.any { icOutput -> outputs.find { it.canonicalPath == icOutput.file }?.sha256() != icOutput.hash }) {
+            if (icOutputs.any { icOutput -> actualOutputs.find { it.canonicalPath == icOutput.file }?.sha256() != icOutput.hash }) {
                 toRegenerate.add(input)
-                toRemove.addAll(outputs.filter { it.canonicalPath in icOutputsPath })
+                toRemove.addAll(actualOutputs.filter { it.canonicalPath in icOutputsPath })
                 continue
             }
 
