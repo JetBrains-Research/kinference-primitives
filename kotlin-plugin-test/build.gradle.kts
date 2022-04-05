@@ -46,8 +46,8 @@ tasks.withType<KotlinCompile<*>> {
     }
 }
 
-tasks["compileKotlinJs"].dependsOn("compileKotlinMetadata")
-tasks["compileKotlinJvm"].dependsOn("compileKotlinMetadata")
+tasks["compileKotlinJs"].dependsOn("compileCommonMainKotlinMetadata")
+tasks["compileKotlinJvm"].dependsOn("compileCommonMainKotlinMetadata")
 
 //tasks["compileKotlin"].outputs.dir(generatedDir)
 
