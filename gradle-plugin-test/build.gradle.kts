@@ -1,27 +1,38 @@
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompile
 
 plugins {
-    kotlin("jvm") version "1.5.31" apply true
-    id("io.kinference.primitives") version "0.1.15"
+    kotlin("multiplatform") version "1.6.20" apply true
+    id("io.kinference.primitives") version "0.1.17"
 }
 
 group = "io.kinference.primitives"
-version = "0.1.15"
+version = "0.1.17"
 
 repositories {
     mavenCentral()
     mavenLocal()
+    maven(url = "https://packages.jetbrains.team/maven/p/ki/maven")
 }
 
-dependencies {
-    implementation(kotlin("stdlib"))
-    api("io.kinference.primitives", "primitives-annotations", "0.1.15")
+kotlin {
+    jvm()
+    js(BOTH) {
+        browser()
+    }
+
+    sourceSets {
+        val commonMain by getting {
+            dependencies {
+                api("io.kinference.primitives:primitives-annotations:0.1.17")
+            }
+        }
+    }
 }
 
 tasks.withType<KotlinJvmCompile> {
     kotlinOptions {
         jvmTarget = "11"
-        languageVersion = "1.5"
-        apiVersion = "1.5"
+        languageVersion = "1.6"
+        apiVersion = "1.6"
     }
 }

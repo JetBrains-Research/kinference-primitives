@@ -1,16 +1,17 @@
 <component name="ProjectRunConfigurationManager">
-    <configuration default="false" name="Compile With Debug" type="ShConfigurationType">
-        <option name="INDEPENDENT_SCRIPT_PATH" value="true"/>
-        <option name="SCRIPT_PATH" value="$PROJECT_DIR$/gradlew"/>
-        <option name="SCRIPT_OPTIONS"
-                value="build --no-daemon -Dorg.gradle.debug=true -Dkotlin.compiler.execution.strategy=&quot;in-process&quot; -Dkotlin.daemon.jvm.options=&quot;-Xdebug,-Xrunjdwp:transport=dt_socket,address=5005,server=y,suspend=n&quot;"/>
-        <option name="INDEPENDENT_SCRIPT_WORKING_DIRECTORY" value="true"/>
-        <option name="SCRIPT_WORKING_DIRECTORY" value="$PROJECT_DIR$"/>
-        <option name="INDEPENDENT_INTERPRETER_PATH" value="true"/>
-        <option name="INTERPRETER_PATH" value="/usr/bin/zsh"/>
-        <option name="INTERPRETER_OPTIONS" value=""/>
-        <option name="EXECUTE_IN_TERMINAL" value="true"/>
-        <envs/>
-        <method v="2"/>
-    </configuration>
+  <configuration default="false" name="Compile With Debug" type="ShConfigurationType">
+    <option name="SCRIPT_TEXT" value="" />
+    <option name="INDEPENDENT_SCRIPT_PATH" value="true" />
+    <option name="SCRIPT_PATH" value="$PROJECT_DIR$/gradlew" />
+    <option name="SCRIPT_OPTIONS" value="build --no-daemon -Dorg.gradle.debug=true -Dkotlin.compiler.execution.strategy=&quot;in-process&quot; -Dkotlin.daemon.jvm.options=&quot;-Xdebug,-Xrunjdwp:transport=dt_socket,address=5005,server=y,suspend=n&quot;" />
+    <option name="INDEPENDENT_SCRIPT_WORKING_DIRECTORY" value="true" />
+    <option name="SCRIPT_WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+    <option name="INDEPENDENT_INTERPRETER_PATH" value="true" />
+    <option name="INTERPRETER_PATH" value="/bin/zsh" />
+    <option name="INTERPRETER_OPTIONS" value="" />
+    <option name="EXECUTE_IN_TERMINAL" value="true" />
+    <option name="EXECUTE_SCRIPT_FILE" value="true" />
+    <envs />
+    <method v="2" />
+  </configuration>
 </component>
