@@ -1,7 +1,6 @@
 package io.kinference.primitives.generator
 
-import io.kinference.primitives.annotations.BindPrimitives
-import io.kinference.primitives.annotations.GeneratePrimitives
+import io.kinference.primitives.annotations.*
 import io.kinference.primitives.generator.errors.require
 import io.kinference.primitives.generator.processor.RemovalProcessor
 import io.kinference.primitives.generator.processor.ReplacementProcessor
@@ -87,6 +86,7 @@ internal class PrimitiveGenerator(
 
                 override fun visitNamedFunction(function: KtNamedFunction) {
                     if (primitive.dataType in function.getExcludes(context)) return
+                    if (function.isAnnotatedWith<SpecifyPrimitives>(context) && primitive.dataType !in function.getIncludes(context)!!) return
 
                     if (function.isAnnotatedWith<BindPrimitives>(context)) {
                         for (annotation in function.annotationEntries.filter { it.isAnnotation<BindPrimitives>(context) }) {
@@ -123,6 +123,7 @@ internal class PrimitiveGenerator(
 
                 override fun visitClass(klass: KtClass) {
                     if (primitive.dataType in klass.getExcludes(context)) return
+                    if (klass.isAnnotatedWith<SpecifyPrimitives>(context) && primitive.dataType !in klass.getIncludes(context)!!) return
 
                     super.visitClass(klass)
                 }

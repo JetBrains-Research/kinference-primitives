@@ -28,6 +28,13 @@ private fun KtAnnotated.getExcludes(context: BindingContext): List<DataType> {
 }
 
 
+internal fun KtClass.getIncludes(context: BindingContext) = (this as KtAnnotated).getIncludes(context)
+internal fun KtNamedFunction.getIncludes(context: BindingContext) = (this as KtAnnotated).getIncludes(context)
+private fun KtAnnotated.getIncludes(context: BindingContext): List<DataType>? {
+    return getAnnotationOrNull<SpecifyPrimitives>(context)?.getTypes(context, SpecifyPrimitives::include)
+}
+
+
 internal fun KtAnnotationEntry.isPluginAnnotation(context: BindingContext): Boolean {
     return isAnnotation<GeneratePrimitives>(context) ||
         isAnnotation<GenerateNameFromPrimitives>(context) ||
@@ -35,7 +42,8 @@ internal fun KtAnnotationEntry.isPluginAnnotation(context: BindingContext): Bool
         isAnnotation<BindPrimitives.Type1>(context) ||
         isAnnotation<BindPrimitives.Type2>(context) ||
         isAnnotation<BindPrimitives.Type3>(context) ||
-        isAnnotation<FilterPrimitives>(context)
+        isAnnotation<FilterPrimitives>(context) ||
+        isAnnotation<SpecifyPrimitives>(context)
 }
 
 internal fun DeclarationDescriptor.isNamedFunction() = findPsi() is KtNamedFunction
