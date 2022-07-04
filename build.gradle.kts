@@ -2,7 +2,8 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompile
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 
 group = "io.kinference.primitives"
-version = "0.1.18"
+//also change version in PluginConstants.kt
+version = "0.1.19"
 
 plugins {
     kotlin("multiplatform") version "1.6.20" apply false
@@ -39,7 +40,7 @@ subprojects {
                 credentials {
                     username = System.getenv("JB_SPACE_CLIENT_ID") ?: ""
                     password = System.getenv("JB_SPACE_CLIENT_SECRET") ?: ""
-                }
+                }/**/
             }
         }
     }
