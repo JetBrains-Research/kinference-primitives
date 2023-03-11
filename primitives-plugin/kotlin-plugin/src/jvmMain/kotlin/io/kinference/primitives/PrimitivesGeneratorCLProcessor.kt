@@ -10,6 +10,7 @@ import java.io.File
  * Main interface of Primitives generator plugin that
  * interacts with Gradle sub-plugin
  */
+@OptIn(ExperimentalCompilerApi::class)
 @AutoService(CommandLineProcessor::class)
 class PrimitivesGeneratorCLProcessor : CommandLineProcessor {
     override val pluginId: String = PLUGIN_ID

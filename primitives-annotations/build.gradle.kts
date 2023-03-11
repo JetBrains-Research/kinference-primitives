@@ -3,7 +3,7 @@ version = rootProject.version
 
 kotlin {
     jvm()
-    js(BOTH) {
+    js(IR) {
         browser()
     }
 
