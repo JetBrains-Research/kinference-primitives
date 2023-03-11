@@ -1,5 +1,5 @@
 job("Build") {
-    container("openjdk:17") {
+    container("amazoncorretto:17") {
         shellScript {
             content = """
               ./gradlew build  
@@ -9,7 +9,7 @@ job("Build") {
 }
 
 job("Test") {
-    container("openjdk:17") {
+    container("amazoncorretto:17") {
         shellScript {
             content = """
               ./gradlew test  
@@ -25,7 +25,7 @@ job("Release") {
         }
     }
 
-    container("openjdk:17") {
+    container("amazoncorretto:17") {
         env["PUBLISHER_ID"] = Secrets("publisher_id")
         env["PUBLISHER_KEY"] = Secrets("publisher_key")
 
