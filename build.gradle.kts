@@ -1,5 +1,5 @@
-import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompile
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
+import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 group = "io.kinference.primitives"
 //also change version in PluginConstants.kt
@@ -50,9 +50,6 @@ subprojects {
         sourceSets.all {
             languageSettings {
                 optIn("kotlin.RequiresOptIn")
-                optIn("kotlin.time.ExperimentalTime")
-                optIn("kotlin.ExperimentalUnsignedTypes")
-                optIn("kotlinx.serialization.ExperimentalSerializationApi")
             }
 
             languageSettings {
