@@ -11,38 +11,35 @@ import org.gradle.api.Project
 import org.gradle.api.logging.LogLevel
 
 import org.gradle.api.provider.Provider
+import org.gradle.jvm.tasks.Jar
 import org.gradle.kotlin.dsl.*
 import org.gradle.plugins.ide.idea.IdeaPlugin
 import org.jetbrains.kotlin.gradle.dsl.*
 import org.jetbrains.kotlin.gradle.plugin.*
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompileCommon
 import java.io.File
 
 class PrimitivesGradlePlugin : KotlinCompilerPluginSupportPlugin {
-    private var commonTasks = mutableSetOf<KotlinCompile<KotlinCommonOptions>>()
-    private val tasksSet = mutableSetOf<KotlinCompile<KotlinCommonOptions>>()
-
     override fun apply(target: Project) {
         target.extensions.create("primitives", PrimitivesPluginExtension::class.java)
         target.apply { it.plugin(IdeaPlugin::class.java) }
         target.repositories {
             maven(url = "https://packages.jetbrains.team/maven/p/ki/maven")
         }
+
+        target.afterEvaluate { project ->
+            val commonTasks = project.tasks.withType<KotlinCompileCommon>().toSet()
+            val otherCompileTasks = project.tasks.withType<KotlinCompile<*>>().toSet().minus(commonTasks)
+            val jarTasks = project.tasks.withType<Jar>().toSet()
+            val commonTasksPaths = commonTasks.map { it.path }.toTypedArray()
+
+            for (otherTask in otherCompileTasks + jarTasks) {
+                otherTask.dependsOn(*commonTasksPaths)
+            }
+        }
     }
 
     override fun applyToCompilation(kotlinCompilation: KotlinCompilation<*>): Provider<List<SubpluginOption>> {
-        when (kotlinCompilation.platformType) {
-            KotlinPlatformType.common -> {
-                commonTasks.add(kotlinCompilation.compileKotlinTask)
-                tasksSet.forEach { it.dependsOn(kotlinCompilation.compileKotlinTask.name) }
-            }
-            else -> {
-                tasksSet.add(kotlinCompilation.compileKotlinTask)
-                for (commonTask in commonTasks) {
-                    kotlinCompilation.compileKotlinTask.dependsOn(commonTask.name)
-                }
-            }
-        }
-
         val project = kotlinCompilation.target.project
         val extension = project.primitives
 

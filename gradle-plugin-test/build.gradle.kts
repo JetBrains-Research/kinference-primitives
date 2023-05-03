@@ -1,12 +1,14 @@
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompile
+import org.jetbrains.kotlin.gradle.tasks.CompileUsingKotlinDaemon
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompilerExecutionStrategy
 
 plugins {
     kotlin("multiplatform") version "1.8.10" apply true
-    id("io.kinference.primitives") version "0.1.20"
+    id("io.kinference.primitives") version "0.1.21"
 }
 
 group = "io.kinference.primitives"
-version = "0.1.20"
+version = "0.1.21"
 
 repositories {
     mavenCentral()
@@ -23,7 +25,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                api("io.kinference.primitives:primitives-annotations:0.1.20")
+                api("io.kinference.primitives:primitives-annotations:0.1.21")
             }
         }
     }
@@ -35,4 +37,9 @@ tasks.withType<KotlinJvmCompile> {
         languageVersion = "1.7"
         apiVersion = "1.7"
     }
+}
+
+// Required for kotlin compiler debugging
+tasks.withType<CompileUsingKotlinDaemon>().configureEach {
+    compilerExecutionStrategy.set(KotlinCompilerExecutionStrategy.IN_PROCESS)
 }
