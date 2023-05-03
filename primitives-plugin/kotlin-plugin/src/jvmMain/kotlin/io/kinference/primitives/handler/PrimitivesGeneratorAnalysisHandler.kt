@@ -111,8 +111,6 @@ internal class PrimitivesGeneratorAnalysisHandler(
 
         collector.report(CompilerMessageSeverity.LOGGING, "Primitives generator generated: $inputsToOutputs")
 
-        if (collector is GroupingMessageCollector) collector.flush()
-
         return when {
             inputsToOutputs.isEmpty() -> null
             else -> {
