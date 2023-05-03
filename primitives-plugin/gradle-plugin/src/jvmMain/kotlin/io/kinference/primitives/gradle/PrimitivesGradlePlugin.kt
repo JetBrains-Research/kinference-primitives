@@ -8,7 +8,6 @@ import io.kinference.primitives.utils.PluginConstants.KOTLIN_PLUGIN_ARTIFACT_ID
 import io.kinference.primitives.utils.PluginConstants.PLUGIN_ID
 import io.kinference.primitives.utils.PluginConstants.VERSION
 import org.gradle.api.Project
-import org.gradle.api.logging.LogLevel
 
 import org.gradle.api.provider.Provider
 import org.gradle.jvm.tasks.Jar
@@ -43,8 +42,8 @@ class PrimitivesGradlePlugin : KotlinCompilerPluginSupportPlugin {
         val project = kotlinCompilation.target.project
         val extension = project.primitives
 
-        val actualGenPath = extension.generationPath?.let { project.file("$it/${kotlinCompilation.defaultSourceSetName}") } ?:
-                            File(project.buildDir, "generated/source/primitives/${kotlinCompilation.defaultSourceSetName}")
+        val actualGenPath = extension.generationPath?.let { project.file("$it/${kotlinCompilation.defaultSourceSet.name}") } ?:
+                            File(project.buildDir, "generated/source/primitives/${kotlinCompilation.defaultSourceSet.name}")
 
         val icManifestPath = extension.incrementalCachePath?.let { project.file(it) } ?: project.buildDir
 
