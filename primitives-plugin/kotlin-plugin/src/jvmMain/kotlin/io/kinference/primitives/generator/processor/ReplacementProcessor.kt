@@ -41,7 +41,7 @@ internal class ReplacementProcessor(private val context: BindingContext, private
     }
 
 
-    fun getReplacement(klass: KtClass, primitive: Primitive<*, *>): String? {
+    fun getReplacement(klass: KtClassOrObject, primitive: Primitive<*, *>): String? {
         if (klass.isAnnotatedWith<GenerateNameFromPrimitives>(context)) {
             return klass.specialize(primitive, collector)
         }
@@ -70,7 +70,7 @@ internal class ReplacementProcessor(private val context: BindingContext, private
             type in defaultReplacements -> {
                 defaultReplacements[type]!!.invoke(primitive)
             }
-            (target.isNamedFunction() || target.isKtClass()) && target.isAnnotatedWith<GenerateNameFromPrimitives>() -> {
+            (target.isNamedFunction() || target.isKtClassOrObject()) && target.isAnnotatedWith<GenerateNameFromPrimitives>() -> {
                 expression.text.specialize(primitive)
             }
             (target.isCompanion() || target.isConstructor()) && target.containingDeclaration!!.isAnnotatedWith<GenerateNameFromPrimitives>() -> {
