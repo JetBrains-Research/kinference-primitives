@@ -4,11 +4,11 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompilerExecutionStrategy
 
 plugins {
     kotlin("multiplatform") version "1.8.10" apply true
-    id("io.kinference.primitives") version "0.1.21"
+    id("io.kinference.primitives") version "0.1.22"
 }
 
 group = "io.kinference.primitives"
-version = "0.1.21"
+version = "0.1.22"
 
 repositories {
     mavenCentral()
@@ -25,7 +25,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                api("io.kinference.primitives:primitives-annotations:0.1.21")
+                api("io.kinference.primitives:primitives-annotations:0.1.22")
             }
         }
     }
