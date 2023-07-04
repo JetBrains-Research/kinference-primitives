@@ -166,7 +166,7 @@ internal class PrimitiveGenerator(
                     }
 
                     when (val parent = element.parent) {
-                        is KtClass -> builder.append(replacementProcessor.getReplacement(parent, currentPrimitive) ?: element.text)
+                        is KtClassOrObject -> builder.append(replacementProcessor.getReplacement(parent, currentPrimitive) ?: element.text)
                         is KtNamedFunction -> builder.append(replacementProcessor.getReplacement(parent, currentPrimitive) ?: element.text)
                         else -> builder.append(element.text)
                     }

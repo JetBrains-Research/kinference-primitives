@@ -47,7 +47,7 @@ internal fun KtAnnotationEntry.isPluginAnnotation(context: BindingContext): Bool
 }
 
 internal fun DeclarationDescriptor.isNamedFunction() = findPsi() is KtNamedFunction
-internal fun DeclarationDescriptor.isKtClass() = findPsi() is KtClass
+internal fun DeclarationDescriptor.isKtClassOrObject() = findPsi() is KtClassOrObject
 internal fun DeclarationDescriptor.isCompanion() = findPsi() is KtObjectDeclaration && containingDeclaration?.findPsi() is KtClass
 internal fun DeclarationDescriptor.isConstructor() = findPsi() is KtConstructor<*> && containingDeclaration?.findPsi() is KtClass
 
