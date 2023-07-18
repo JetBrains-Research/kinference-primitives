@@ -3,8 +3,8 @@ import org.jetbrains.kotlin.gradle.tasks.CompileUsingKotlinDaemon
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilerExecutionStrategy
 
 plugins {
-    kotlin("multiplatform") version "1.8.10" apply true
-    id("io.kinference.primitives") version "0.1.22"
+    kotlin("multiplatform") version "1.9.0" apply true
+    id("io.kinference.primitives") version "0.1.23"
 }
 
 group = "io.kinference.primitives"
@@ -25,7 +25,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                api("io.kinference.primitives:primitives-annotations:0.1.22")
+                api("io.kinference.primitives:primitives-annotations:0.1.23")
             }
         }
     }
