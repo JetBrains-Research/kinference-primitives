@@ -3,7 +3,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 group = "io.kinference.primitives"
 //also change version in PluginConstants.kt
-version = "0.1.22"
+version = "0.1.23"
 
 plugins {
     kotlin("multiplatform") version "1.8.10" apply false

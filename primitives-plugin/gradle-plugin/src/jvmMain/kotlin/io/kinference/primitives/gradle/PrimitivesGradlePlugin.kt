@@ -27,13 +27,20 @@ class PrimitivesGradlePlugin : KotlinCompilerPluginSupportPlugin {
         }
 
         target.afterEvaluate { project ->
-            val commonTasks = project.tasks.withType<KotlinCompileCommon>().toSet()
+            val commonTasks = project.tasks.withType<KotlinCommonCompile>().toSet()
             val otherCompileTasks = project.tasks.withType<KotlinCompile<*>>().toSet().minus(commonTasks)
             val jarTasks = project.tasks.withType<Jar>().toSet()
-            val commonTasksPaths = commonTasks.map { it.path }.toTypedArray()
+
+            val commonTasksArray = commonTasks.toTypedArray()
 
             for (otherTask in otherCompileTasks + jarTasks) {
-                otherTask.dependsOn(*commonTasksPaths)
+                otherTask.dependsOn(*commonTasksArray)
+            }
+
+            project.tasks.withType<KotlinCommonCompile>().whenTaskAdded { newTask ->
+                for (otherTask in otherCompileTasks + jarTasks) {
+                    otherTask.dependsOn(newTask)
+                }
             }
         }
     }
