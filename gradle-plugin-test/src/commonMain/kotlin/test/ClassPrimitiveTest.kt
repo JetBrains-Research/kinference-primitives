@@ -1,12 +1,12 @@
 @file:GeneratePrimitives(DataType.FLOAT, DataType.INT)
 package test
 
-import io.kinference.primitives.annotations.GenerateNameFromPrimitives
-import io.kinference.primitives.annotations.GeneratePrimitives
+import io.kinference.primitives.annotations.*
 import io.kinference.primitives.types.*
 
 @GenerateNameFromPrimitives
-class ClassPrimitiveTest {
+@MakePublic
+internal class ClassPrimitiveTest {
     val a = PrimitiveType.MIN_VALUE
 
     companion object {
@@ -16,6 +16,6 @@ class ClassPrimitiveTest {
     }
 }
 
-fun ClassPrimitiveTest.v() = Unit
+internal fun ClassPrimitiveTest.v() = Unit
 
 

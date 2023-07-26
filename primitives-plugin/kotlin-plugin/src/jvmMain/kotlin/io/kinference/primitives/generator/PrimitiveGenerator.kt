@@ -13,6 +13,7 @@ import org.jetbrains.kotlin.com.intellij.psi.PsiWhiteSpace
 import org.jetbrains.kotlin.com.intellij.psi.impl.source.tree.LeafPsiElement
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.psi.psiUtil.visibilityModifier
 import org.jetbrains.kotlin.resolve.BindingContext
 import java.io.File
 
@@ -58,6 +59,14 @@ internal class PrimitiveGenerator(
                     primitiveContext = context
                     body()
                     primitiveContext = tmp
+                }
+
+                override fun visitModifierList(list: KtModifierList) {
+                    if (replacementProcessor.shouldChangeVisibilityModifier(list)) {
+                        replacementProcessor.prepareReplaceText(list.visibilityModifier(), "public")
+                    }
+
+                    super.visitModifierList(list)
                 }
 
                 override fun visitWhiteSpace(space: PsiWhiteSpace) {
@@ -160,6 +169,11 @@ internal class PrimitiveGenerator(
                 }
 
                 override fun visitLeafElement(element: LeafPsiElement) {
+                    if (replacementProcessor.haveReplaceText(element)) {
+                        builder.append(replacementProcessor.getReplacement(element))
+                        return
+                    }
+
                     if (element.elementType != KtTokens.IDENTIFIER) {
                         builder.append(element.text)
                         return

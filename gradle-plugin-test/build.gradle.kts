@@ -25,7 +25,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                api("io.kinference.primitives:primitives-annotations:0.1.24")
+                api("io.kinference.primitives:primitives-annotations:0.1.25-dev-2")
             }
         }
     }

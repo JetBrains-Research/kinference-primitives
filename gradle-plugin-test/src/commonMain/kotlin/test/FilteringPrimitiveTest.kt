@@ -6,7 +6,8 @@ import io.kinference.primitives.annotations.*
 import io.kinference.primitives.types.*
 
 @GenerateNameFromPrimitives
-class FilteringPrimitiveTest {
+@MakePublic
+internal class FilteringPrimitiveTest {
     fun all(x: PrimitiveType) : PrimitiveType {
         val y = x
         return y

@@ -8,7 +8,8 @@ import io.kinference.primitives.types.*
 import io.kinference.primitives.types.toPrimitive
 
 @GenerateNameFromPrimitives
-class NumbersPrimitiveTest {
+@MakePublic
+internal class NumbersPrimitiveTest {
     fun test(): PrimitiveType {
         val x: PrimitiveType = (0).toPrimitive()
         val y: PrimitiveType = (x + x).toPrimitive()

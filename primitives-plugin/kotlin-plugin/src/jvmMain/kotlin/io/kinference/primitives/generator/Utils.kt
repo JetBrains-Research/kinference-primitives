@@ -43,7 +43,8 @@ internal fun KtAnnotationEntry.isPluginAnnotation(context: BindingContext): Bool
         isAnnotation<BindPrimitives.Type2>(context) ||
         isAnnotation<BindPrimitives.Type3>(context) ||
         isAnnotation<FilterPrimitives>(context) ||
-        isAnnotation<SpecifyPrimitives>(context)
+        isAnnotation<SpecifyPrimitives>(context) ||
+        isAnnotation<MakePublic>(context)
 }
 
 internal fun DeclarationDescriptor.isNamedFunction() = findPsi() is KtNamedFunction
