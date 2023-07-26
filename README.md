@@ -29,7 +29,7 @@ And then apply it to the project you are working on:
 
 ```kotlin
 plugins {
-    id("io.kinference.primitives") version "0.1.23" apply true
+    id("io.kinference.primitives") version "0.1.24" apply true
 }
 ```
 

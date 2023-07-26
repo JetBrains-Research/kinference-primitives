@@ -70,9 +70,12 @@ internal class ReplacementProcessor(private val context: BindingContext, private
             type in defaultReplacements -> {
                 defaultReplacements[type]!!.invoke(primitive)
             }
+
+            (target.isKtClassOrObject() && target.containingDeclaration!!.isAnnotatedWith<GenerateNameFromPrimitives>()) ||
             (target.isNamedFunction() || target.isKtClassOrObject()) && target.isAnnotatedWith<GenerateNameFromPrimitives>() -> {
                 expression.text.specialize(primitive)
             }
+
             (target.isCompanion() || target.isConstructor()) && target.containingDeclaration!!.isAnnotatedWith<GenerateNameFromPrimitives>() -> {
                 name.specialize(primitive)
             }
