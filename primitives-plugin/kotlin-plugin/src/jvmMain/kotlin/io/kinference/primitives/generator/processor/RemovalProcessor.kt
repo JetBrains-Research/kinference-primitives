@@ -1,5 +1,6 @@
 package io.kinference.primitives.generator.processor
 
+import io.kinference.primitives.annotations.*
 import io.kinference.primitives.generator.isPluginAnnotation
 import io.kinference.primitives.types.PrimitiveArray
 import io.kinference.primitives.types.PrimitiveType
@@ -15,7 +16,15 @@ internal class RemovalProcessor(private val context: BindingContext) {
     companion object {
         private val WHITESPACE_TO_DELETE: Key<Boolean> = Key.create("WHITESPACE_TO_DELETE")
 
-        private val importsToRemove = setOf(PrimitiveType::class.qualifiedName, PrimitiveArray::class.qualifiedName)
+        private val importsToRemove = setOf(
+            PrimitiveType::class.qualifiedName,
+            PrimitiveArray::class.qualifiedName,
+            BindPrimitives::class.qualifiedName,
+            FilterPrimitives::class.qualifiedName,
+            GenerateNameFromPrimitives::class.qualifiedName,
+            GeneratePrimitives::class.qualifiedName,
+            SpecifyPrimitives::class.qualifiedName,
+        )
     }
 
     fun shouldRemoveImport(directive: KtImportDirective): Boolean {
