@@ -1,6 +1,7 @@
 package io.kinference.primitives.generator.processor
 
 import io.kinference.primitives.annotations.GenerateNameFromPrimitives
+import io.kinference.primitives.annotations.MakePublic
 import io.kinference.primitives.generator.*
 import io.kinference.primitives.generator.errors.require
 import io.kinference.primitives.handler.Primitive
@@ -9,8 +10,12 @@ import io.kinference.primitives.utils.psi.forced
 import io.kinference.primitives.utils.psi.isAnnotatedWith
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
+import org.jetbrains.kotlin.com.intellij.openapi.util.Key
+import org.jetbrains.kotlin.com.intellij.psi.PsiElement
+import org.jetbrains.kotlin.com.intellij.psi.impl.source.tree.LeafPsiElement
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.isExtensionDeclaration
+import org.jetbrains.kotlin.psi.psiUtil.visibilityModifier
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
 
@@ -23,6 +28,8 @@ internal class ReplacementProcessor(private val context: BindingContext, private
                 else -> "to${primitive.typeName}"
             }
         }
+
+        private val REPLACE_TEXT: Key<String> = Key.create("REPLACE_TEXT_IN_MODIFIER")
 
         private val defaultReplacements: Map<String, (Primitive<*, *>) -> String> = mapOf(
             (DataType::class.qualifiedName!! + ".Companion.${DataType.Companion::CurrentPrimitive.name}") to { it.dataType.name },
@@ -83,4 +90,22 @@ internal class ReplacementProcessor(private val context: BindingContext, private
         }
     }
 
+    fun shouldChangeVisibilityModifier(list: KtModifierList): Boolean {
+        val owner = list.owner
+        val visibilityModifier = list.visibilityModifier()
+
+        return visibilityModifier != null && owner is KtAnnotated && owner.isAnnotatedWith<MakePublic>(context)
+    }
+
+    fun prepareReplaceText(psi: PsiElement?, newText: String) {
+        psi?.putUserData(REPLACE_TEXT, newText)
+    }
+
+    fun haveReplaceText(psi: LeafPsiElement): Boolean {
+        return psi.getUserData(REPLACE_TEXT) != null
+    }
+
+    fun getReplacement(psi: LeafPsiElement): String {
+        return psi.getUserData(REPLACE_TEXT)!!
+    }
 }
