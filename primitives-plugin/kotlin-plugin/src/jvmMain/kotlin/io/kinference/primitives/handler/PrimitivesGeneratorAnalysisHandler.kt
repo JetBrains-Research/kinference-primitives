@@ -18,6 +18,7 @@ import org.jetbrains.kotlin.resolve.calls.smartcasts.DataFlowInfo
 import org.jetbrains.kotlin.resolve.extensions.AnalysisHandlerExtension
 import org.jetbrains.kotlin.resolve.lazy.DeclarationScopeProvider
 import org.jetbrains.kotlin.resolve.lazy.FileScopeProvider
+import org.jetbrains.kotlin.resolve.multiplatform.isCommonSource
 import java.io.File
 import java.nio.file.Files
 import java.util.stream.Collectors
@@ -39,6 +40,8 @@ internal class PrimitivesGeneratorAnalysisHandler(
 ) : AnalysisHandlerExtension {
     private val moduleName = outputDir.name
     private val cache = ICCache(incrementalDir)
+
+    private val outputDirAbsolutePath = outputDir.absolutePath
 
     private fun resolveFilesAnnotations(files: Collection<KtFile>, componentProvider: ComponentProvider) {
         val declarationScopeProvider = componentProvider.get<DeclarationScopeProvider>()
@@ -107,6 +110,14 @@ internal class PrimitivesGeneratorAnalysisHandler(
             cache.updateManifestCommon(upToDate, inputsToOutputs)
         } else {
             cache.updateManifest(moduleName, upToDate, inputsToOutputs)
+        }
+
+        if (isCommon && inputsToOutputs.isEmpty()) {
+            for (file in files) {
+                if (file.virtualFilePath.contains(outputDirAbsolutePath)) {
+                    file.isCommonSource = true
+                }
+            }
         }
 
         collector.report(CompilerMessageSeverity.LOGGING, "Primitives generator generated: $inputsToOutputs")
