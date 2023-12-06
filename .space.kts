@@ -1,4 +1,4 @@
-val image = "amazoncorretto:17-alpine3.18"
+val image = "amazoncorretto:17-al2023"
 
 job("Build") {
     container(image) {
