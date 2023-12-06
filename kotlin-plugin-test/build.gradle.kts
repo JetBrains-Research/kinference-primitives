@@ -1,3 +1,5 @@
+import org.gradle.jvm.tasks.Jar
+import org.jetbrains.kotlin.gradle.dsl.KotlinCommonCompile
 import org.jetbrains.kotlin.gradle.dsl.KotlinCompile
 
 group = rootProject.group
@@ -46,10 +48,23 @@ tasks.withType<KotlinCompile<*>> {
     }
 }
 
-tasks["compileKotlinJs"].dependsOn("compileCommonMainKotlinMetadata")
-tasks["compileKotlinJvm"].dependsOn("compileCommonMainKotlinMetadata")
+afterEvaluate {
+    val commonTasks = this@afterEvaluate.tasks.withType<KotlinCommonCompile>().toSet()
+    val otherCompileTasks = this@afterEvaluate.tasks.withType<KotlinCompile<*>>().toSet().minus(commonTasks)
+    val jarTasks = this@afterEvaluate.tasks.withType<Jar>().toSet()
 
-//tasks["compileKotlin"].outputs.dir(generatedDir)
+    val commonTasksArray = commonTasks.toTypedArray()
+
+    for (otherTask in otherCompileTasks + jarTasks) {
+        otherTask.dependsOn(*commonTasksArray)
+    }
+
+    this.tasks.withType<KotlinCommonCompile>().whenTaskAdded {
+        for (otherTask in otherCompileTasks + jarTasks) {
+            otherTask.dependsOn(this@whenTaskAdded)
+        }
+    }
+}
 
 kotlin {
     sourceSets["commonMain"].apply {
