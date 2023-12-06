@@ -1,5 +1,7 @@
+val image = "amazoncorretto:17-alpine3.18"
+
 job("Build") {
-    container("amazoncorretto:17") {
+    container(image) {
         shellScript {
             content = """
               ./gradlew build  
@@ -9,7 +11,7 @@ job("Build") {
 }
 
 job("Test") {
-    container("amazoncorretto:17") {
+    container(image) {
         shellScript {
             content = """
               ./gradlew test  
@@ -18,7 +20,7 @@ job("Test") {
     }
 }
 
-job("Release") {
+job(image) {
     startOn {
         gitPush {
             enabled = false
