@@ -3,10 +3,10 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 group = "io.kinference.primitives"
 //also change version in PluginConstants.kt
-version = "0.1.24"
+version = "0.1.25"
 
 plugins {
-    kotlin("multiplatform") version "1.8.10" apply false
+    kotlin("multiplatform") version "1.9.21" apply false
     `maven-publish` apply true
 }
 
@@ -53,8 +53,8 @@ subprojects {
             }
 
             languageSettings {
-                apiVersion = "1.7"
-                languageVersion = "1.7"
+                apiVersion = "1.9"
+                languageVersion = "1.9"
             }
         }
 
