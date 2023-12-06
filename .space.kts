@@ -1,4 +1,4 @@
-val image = "amazoncorretto:17-al2023"
+val image = "registry.jetbrains.team/p/ki/containers-ci/ci-corretto-17-firefox:1.0.1"
 
 job("Build") {
     container(image) {
@@ -20,14 +20,14 @@ job("Test") {
     }
 }
 
-job(image) {
+job("Release") {
     startOn {
         gitPush {
             enabled = false
         }
     }
 
-    container("amazoncorretto:17") {
+    container(image) {
         env["PUBLISHER_ID"] = Secrets("publisher_id")
         env["PUBLISHER_KEY"] = Secrets("publisher_key")
 
