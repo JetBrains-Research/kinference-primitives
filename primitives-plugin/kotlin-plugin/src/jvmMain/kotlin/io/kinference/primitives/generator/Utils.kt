@@ -7,10 +7,12 @@ import io.kinference.primitives.types.DataType
 import io.kinference.primitives.utils.psi.*
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
+import org.jetbrains.kotlin.descriptors.ClassConstructorDescriptor
 import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
 import org.jetbrains.kotlin.js.resolve.diagnostics.findPsi
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.resolve.BindingContext
+import org.jetbrains.kotlin.resolve.isValueClass
 import kotlin.reflect.KProperty
 
 
@@ -48,9 +50,9 @@ internal fun KtAnnotationEntry.isPluginAnnotation(context: BindingContext): Bool
 }
 
 internal fun DeclarationDescriptor.isNamedFunction() = findPsi() is KtNamedFunction
-internal fun DeclarationDescriptor.isKtClassOrObject() = findPsi() is KtClassOrObject
+internal fun DeclarationDescriptor.isKtClassOrObject() = findPsi() is KtClassOrObject || isValueClass()
 internal fun DeclarationDescriptor.isCompanion() = findPsi() is KtObjectDeclaration && containingDeclaration?.findPsi() is KtClass
-internal fun DeclarationDescriptor.isConstructor() = findPsi() is KtConstructor<*> && containingDeclaration?.findPsi() is KtClass
+internal fun DeclarationDescriptor.isConstructor() = this is ClassConstructorDescriptor || findPsi() is KtConstructor<*> && containingDeclaration?.findPsi() is KtClass
 
 internal fun KtNamedDeclaration.specialize(primitive: Primitive<*, *>, collector: MessageCollector): String {
     val name = name!!

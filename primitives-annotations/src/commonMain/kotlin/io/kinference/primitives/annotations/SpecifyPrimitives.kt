@@ -9,7 +9,6 @@ import io.kinference.primitives.types.DataType
  * that PrimitiveType is Double type number
  */
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS)
-@Retention(AnnotationRetention.SOURCE)
 annotation class SpecifyPrimitives(
     val include: Array<DataType> = arrayOf(DataType.ALL)
 )

@@ -18,7 +18,6 @@ import io.kinference.primitives.types.DataType
  */
 @Repeatable
 @Target(AnnotationTarget.FUNCTION)
-@Retention(AnnotationRetention.SOURCE)
 annotation class BindPrimitives(
     val type1: Array<DataType> = emptyArray(),
     val type2: Array<DataType> = emptyArray(),
