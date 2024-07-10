@@ -1,67 +1,51 @@
-import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
-import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompilerOptions
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 
-group = "io.kinference.primitives"
-//also change version in PluginConstants.kt
-version = "0.1.26"
+group = property("GROUP").toString()
+version = property("VERSION").toString()
 
 plugins {
-    kotlin("multiplatform") version "1.9.21" apply false
-    `maven-publish` apply true
+    alias(libs.plugins.kotlinMpp) apply false
 }
 
-subprojects {
-    if (this.subprojects.isNotEmpty()) return@subprojects
-    if (this.name == "kotlin-plugin-test") {
-        apply {
-            plugin("org.jetbrains.kotlin.multiplatform")
-
-        }
-        return@subprojects
-    }
-
-
+allprojects {
     repositories {
         mavenCentral()
         gradlePluginPortal()
     }
+}
 
-    apply {
-        plugin("org.jetbrains.kotlin.multiplatform")
-        plugin("maven-publish")
+subprojects {
+    tasks.withType(JavaCompile::class.java).all {
+        sourceCompatibility = JavaVersion.VERSION_1_8.toString()
+        targetCompatibility = JavaVersion.VERSION_1_8.toString()
     }
 
-    publishing {
-        repositories {
-            maven {
-                name = "SpacePackages"
-                url = uri("https://packages.jetbrains.team/maven/p/ki/maven")
-
-                credentials {
-                    username = System.getenv("JB_SPACE_CLIENT_ID") ?: ""
-                    password = System.getenv("JB_SPACE_CLIENT_SECRET") ?: ""
-                }/**/
-            }
-        }
-    }
-
-
-    extensions.getByType(KotlinMultiplatformExtension::class.java).apply {
-        sourceSets.all {
-            languageSettings {
-                optIn("kotlin.RequiresOptIn")
+    tasks.withType(KotlinCompilationTask::class.java).all {
+        compilerOptions {
+            if (this is KotlinJvmCompilerOptions) {
+                jvmTarget.set(JvmTarget.JVM_1_8)
             }
 
-            languageSettings {
-                apiVersion = "1.9"
-                languageVersion = "1.9"
-            }
-        }
-
-        tasks.withType<KotlinJvmCompile> {
-            kotlinOptions {
-                jvmTarget = "17"
-            }
+            apiVersion.set(KotlinVersion.KOTLIN_2_0)
+            languageVersion.set(KotlinVersion.KOTLIN_2_0)
         }
     }
 }
+
+tasks.register("publish") {
+    group = "publishing"
+
+    dependsOn(gradle.includedBuild("plugin-build").task(":publish"))
+}
+
+tasks.register("publishToMavenLocal") {
+    group = "publishing"
+
+    dependsOn(
+        gradle.includedBuild("plugin-build").task(":publishToMavenLocal")
+    )
+}
+
