@@ -1,10 +1,10 @@
 package io.kinference.primitives
 
-import org.gradle.api.Plugin
-import org.gradle.api.Project
-import org.gradle.api.tasks.PathSensitivity
+import org.gradle.api.*
 import org.jetbrains.kotlin.gradle.dsl.*
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
+import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompileTool
 
 class PrimitivesGradlePlugin : Plugin<Project> {
     override fun apply(project: Project) {
@@ -12,42 +12,43 @@ class PrimitivesGradlePlugin : Plugin<Project> {
 
         val primitivesExt = project.extensions.create(extensionName, PrimitivesExtension::class.java)
 
-        val primitivesTask = project.tasks.register(primitivesTaskName, PrimitivesTask::class.java) { primitivesTask ->
-            primitivesTask.generationPath.set(primitivesExt.generationPath)
+
+        val primitivesCache = project.gradle.sharedServices.registerIfAbsent("${project.path}_${primitivesCacheName}", PrimitivesCache::class.java) {
+            it.maxParallelUsages.set(1)
         }
 
-        project.afterEvaluate {
-            val buildDependenciesTasks = project.tasks.named("buildNeeded").get().dependsOn.filterNot { it == "build" }.filterNotNull()
-            for (task in buildDependenciesTasks) {
-                primitivesTask.get().dependsOn(task)
-            }
+        val generalPrimitivesTask = project.tasks.register(primitivesTaskName) {
+            it.group = "generate"
         }
 
         kotlinExt.sourceSets.all { sourceSet ->
-            val sourceSetName = sourceSet.name
-            val fullPath = primitivesExt.generationPath.dir(sourceSetName)
-
-            sourceSet.kotlin.srcDir(fullPath)
-
-            //Support for Incremental compilation
-            primitivesTask.get().inputs
-                .files(sourceSet.kotlin.asFileTree)
-                .withPathSensitivity(PathSensitivity.ABSOLUTE)
-                .normalizeLineEndings()
-                .skipWhenEmpty()
+            sourceSet.kotlin.srcDir(primitivesExt.generationPath.dir(sourceSet.name))
+            primitivesCache.get().sourceSetToResolved[sourceSet.name] = false
         }
 
         fun configureCompilation(compilation: KotlinCompilation<*>) {
-            val targetTask = compilation.compileTaskProvider
+            if (compilation.platformType !in setOf(KotlinPlatformType.common, KotlinPlatformType.jvm, KotlinPlatformType.js)) return
 
-            targetTask.configure {
-                it.dependsOn(primitivesTask)
+            val compileTask = compilation.compileTaskProvider.get() as KotlinCompileTool
+            val taskName = compileTask.name.replace("compile", "generate")
+
+            val primitivesTask = compilation.project.tasks.register(taskName, PrimitivesTask::class.java) { primitiveTask ->
+                primitiveTask.usesService(primitivesCache)
+                primitiveTask.primitivesCache.set(primitivesCache)
+
+                primitiveTask.generationPath.set(primitivesExt.generationPath)
+                primitiveTask.inputFiles.from(compileTask.sources)
+                primitiveTask.libraries.from(compileTask.libraries)
+                primitiveTask.compilation.set(compilation)
             }
+
+            compileTask.dependsOn(primitivesTask)
+            generalPrimitivesTask.get().dependsOn(primitivesTask)
         }
 
         if (kotlinExt is KotlinMultiplatformExtension) {
-            kotlinExt.targets.all { kotlinTarget ->
-                kotlinTarget.compilations.all { compilation ->
+            kotlinExt.targets.all { target ->
+                target.compilations.all { compilation ->
                     configureCompilation(compilation)
                 }
             }
@@ -61,7 +62,8 @@ class PrimitivesGradlePlugin : Plugin<Project> {
     }
 
     companion object {
-        const val primitivesTaskName = "generatePrimitives"
+        const val primitivesCacheName = "primitivesCache"
+        const val primitivesTaskName = "generateAllPrimitives"
         const val extensionName = "primitives"
     }
 }
