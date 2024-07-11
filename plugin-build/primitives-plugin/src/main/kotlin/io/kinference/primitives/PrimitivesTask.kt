@@ -59,9 +59,9 @@ abstract class PrimitivesTask : DefaultTask() {
         val sourcesWithMppInfo = inputFiles
             .filterNot { it.absolutePath.startsWith(generationPath.get().asFile.absolutePath) }
             .map { source ->
-                val isMpp = findSourceSetName(source) == "commonMain"
+                val isCommon = findSourceSetName(source) == "commonMain"
 
-                FileWithMpp(source, isMpp)
+                FileWithCommon(source, isCommon)
             }
 
         val analyzeFun = when(compilation.get().platformType) {
@@ -74,7 +74,7 @@ abstract class PrimitivesTask : DefaultTask() {
         val compilerConfig = Analyze.createCompilerConfig(isMpp)
 
         for (source in sourcesWithMppInfo) {
-            compilerConfig.addKotlinSourceRoot(source.file.path, source.isMpp)
+            compilerConfig.addKotlinSourceRoot(source.file.path, source.isCommon)
         }
 
         compilerConfig.addJvmClasspathRoots(libraries.files.filterNotNull())
@@ -98,5 +98,5 @@ abstract class PrimitivesTask : DefaultTask() {
     }
 
 
-    data class FileWithMpp(val file: File, val isMpp: Boolean)
+    data class FileWithCommon(val file: File, val isCommon: Boolean)
 }
