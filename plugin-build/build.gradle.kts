@@ -67,11 +67,11 @@ subprojects {
 project.afterEvaluate {
     tasks.getByPath(":publishToMavenLocal").dependsOn(
         ":primitives-plugin:publishToMavenLocal",
-        "primitives-annotations:publishToMavenLocal"
+        ":primitives-annotations:publishToMavenLocal"
     )
 
     tasks.getByPath(":publish").dependsOn(
         ":primitives-plugin:publish",
-        "primitives-annotations:publish"
+        ":primitives-annotations:publish"
     )
 }
