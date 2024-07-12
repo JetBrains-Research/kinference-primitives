@@ -2,7 +2,7 @@ group = rootProject.group
 version = rootProject.version
 
 plugins {
-    alias(libs.plugins.kotlinMpp) apply true
+    alias(libs.plugins.kotlin.mpp) apply true
 }
 
 kotlin {

@@ -13,8 +13,8 @@ Properties().apply {
 }
 
 plugins {
-    alias(libs.plugins.kotlinJvm) apply false
-    alias(libs.plugins.kotlinMpp) apply false
+    alias(libs.plugins.kotlin.jvm) apply false
+    alias(libs.plugins.kotlin.mpp) apply false
     `maven-publish`
 }
 

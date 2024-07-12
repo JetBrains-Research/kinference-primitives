@@ -7,7 +7,7 @@ group = property("GROUP").toString()
 version = property("VERSION").toString()
 
 plugins {
-    alias(libs.plugins.kotlinMpp) apply false
+    alias(libs.plugins.kotlin.mpp) apply false
 }
 
 allprojects {

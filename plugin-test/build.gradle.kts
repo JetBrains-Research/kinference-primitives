@@ -1,5 +1,5 @@
 plugins {
-    alias(libs.plugins.kotlinMpp)
+    alias(libs.plugins.kotlin.mpp)
     id("io.kinference.primitives")
 }
 
