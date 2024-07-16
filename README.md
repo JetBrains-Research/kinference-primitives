@@ -14,14 +14,6 @@ pluginManagement {
         gradlePluginPortal()
         maven(url = "https://packages.jetbrains.team/maven/p/ki/maven")
     }
-
-    resolutionStrategy {
-        eachPlugin {
-            if (requested.id.id == "io.kinference.primitives") {
-                useModule("io.kinference.primitives:gradle-plugin-jvm:${requested.version}")
-            }
-        }
-    }
 }
 ```
 
@@ -29,7 +21,7 @@ And then apply it to the project you are working on:
 
 ```kotlin
 plugins {
-    id("io.kinference.primitives") version "0.1.24" apply true
+    id("io.kinference.primitives") version "2.0.0" apply true
 }
 ```
 
@@ -42,7 +34,7 @@ repositories {
 }
 
 dependencies {
-    api("io.kinference.primitives:primitives-annotations:0.1.23")
+    api("io.kinference.primitives:primitives-annotations:2.0.0")
 }
 ```
 
