@@ -50,6 +50,32 @@ subprojects {
     }
 
     publishing {
+        publications {
+            all {
+                if (this !is MavenPublication) return@all
+
+                pom {
+                    name = "KInference Primitives"
+                    description =
+                        "KInference Primitives is a library that makes possible generation of primitive versions for generic types.\n" +
+                        "\n" +
+                        "It supports the Kotlin Multiplatform and is capable of generating common code that would be possible to reuse between JS and JVM " +
+                        "targets."
+
+                    licenses {
+                        license {
+                            name = "Apache License, Version 2.0"
+                            url = "https://www.apache.org/licenses/LICENSE-2.0"
+                        }
+                    }
+
+                    scm {
+                        url = "https://github.com/JetBrains-Research/kinference-primitives"
+                    }
+                }
+            }
+        }
+
         repositories {
             maven {
                 name = "SpacePackages"
