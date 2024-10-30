@@ -21,7 +21,7 @@ And then apply it to the project you are working on:
 
 ```kotlin
 plugins {
-    id("io.kinference.primitives") version "2.0.0" apply true
+    id("io.kinference.primitives") version "2.0.0-1" apply true
 }
 ```
 
@@ -34,7 +34,7 @@ repositories {
 }
 
 dependencies {
-    api("io.kinference.primitives:primitives-annotations:2.0.0")
+    api("io.kinference.primitives:primitives-annotations:2.0.0-1")
 }
 ```
 
