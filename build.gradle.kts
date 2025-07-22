@@ -12,6 +12,7 @@ plugins {
 
 allprojects {
     repositories {
+        mavenLocal()
         mavenCentral()
         gradlePluginPortal()
     }
@@ -19,14 +20,14 @@ allprojects {
 
 subprojects {
     tasks.withType(JavaCompile::class.java).all {
-        sourceCompatibility = JavaVersion.VERSION_1_8.toString()
-        targetCompatibility = JavaVersion.VERSION_1_8.toString()
+        sourceCompatibility = JavaVersion.VERSION_21.toString()
+        targetCompatibility = JavaVersion.VERSION_21.toString()
     }
 
     tasks.withType(KotlinCompilationTask::class.java).all {
         compilerOptions {
             if (this is KotlinJvmCompilerOptions) {
-                jvmTarget.set(JvmTarget.JVM_1_8)
+                jvmTarget.set(JvmTarget.JVM_21)
             }
 
             apiVersion.set(KotlinVersion.KOTLIN_2_0)

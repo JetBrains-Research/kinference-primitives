@@ -4,6 +4,7 @@ import io.kinference.primitives.annotations.*
 import io.kinference.primitives.generator.errors.require
 import io.kinference.primitives.generator.processor.RemovalProcessor
 import io.kinference.primitives.generator.processor.ReplacementProcessor
+import io.kinference.primitives.types.DataType
 import io.kinference.primitives.utils.crossProduct
 import io.kinference.primitives.utils.psi.*
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
@@ -15,6 +16,7 @@ import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.visibilityModifier
 import org.jetbrains.kotlin.resolve.BindingContext
 import java.io.File
+import kotlin.io.path.Path
 
 internal class PrimitiveGenerator(
     private val file: KtFile, private val context: BindingContext, private val output: File,
@@ -58,6 +60,12 @@ internal class PrimitiveGenerator(
                     primitiveContext = context
                     body()
                     primitiveContext = tmp
+                }
+
+                override fun visitImportList(importList: KtImportList) {
+                    if (file.isAnnotatedWith<GenerateVector>(context) && primitive.dataType in DataType.VECTORIZABLE.resolve())
+                        builder.appendLine("import jdk.incubator.vector.*")
+                    super.visitImportList(importList)
                 }
 
                 override fun visitModifierList(list: KtModifierList) {
@@ -141,12 +149,15 @@ internal class PrimitiveGenerator(
                         typeReference.isAnnotatedWith<BindPrimitives.Type1>(context) -> typeReference.withPrimitive(primitiveContext.type1) {
                             super.visitTypeReference(typeReference)
                         }
+
                         typeReference.isAnnotatedWith<BindPrimitives.Type2>(context) -> typeReference.withPrimitive(primitiveContext.type2) {
                             super.visitTypeReference(typeReference)
                         }
+
                         typeReference.isAnnotatedWith<BindPrimitives.Type3>(context) -> typeReference.withPrimitive(primitiveContext.type3) {
                             super.visitTypeReference(typeReference)
                         }
+
                         else -> super.visitTypeReference(typeReference)
                     }
                 }
@@ -157,12 +168,15 @@ internal class PrimitiveGenerator(
                         expression.isAnnotatedWith<BindPrimitives.Type1>(context) -> expression.withPrimitive(primitiveContext.type1) {
                             super.visitAnnotatedExpression(expression)
                         }
+
                         expression.isAnnotatedWith<BindPrimitives.Type2>(context) -> expression.withPrimitive(primitiveContext.type2) {
                             super.visitAnnotatedExpression(expression)
                         }
+
                         expression.isAnnotatedWith<BindPrimitives.Type3>(context) -> expression.withPrimitive(primitiveContext.type3) {
                             super.visitAnnotatedExpression(expression)
                         }
+
                         else -> super.visitAnnotatedExpression(expression)
                     }
                 }
@@ -188,6 +202,17 @@ internal class PrimitiveGenerator(
                 override fun visitSimpleNameExpression(expression: KtSimpleNameExpression) {
                     val replacement = replacementProcessor.getReplacement(expression, currentPrimitive)
                     builder.append(replacement ?: expression.text)
+                }
+
+                override fun visitDotQualifiedExpression(expression: KtDotQualifiedExpression) {
+                    if (!file.isAnnotatedWith<GenerateVector>(context)) {
+                        super.visitDotQualifiedExpression(expression)
+                        return
+                    }
+                    val replacement = replacementProcessor.getReplacement(expression, currentPrimitive)
+                    if (replacement.isNullOrEmpty()) {
+                        super.visitDotQualifiedExpression(expression); return
+                    } else builder.append(replacement)
                 }
             })
 

@@ -24,3 +24,6 @@ gradlePlugin {
         }
     }
 }
+repositories {
+    mavenCentral()
+}

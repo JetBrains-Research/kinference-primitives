@@ -4,6 +4,7 @@ import io.kinference.primitives.annotations.*
 import io.kinference.primitives.generator.isPluginAnnotation
 import io.kinference.primitives.types.PrimitiveArray
 import io.kinference.primitives.types.PrimitiveType
+import io.kinference.primitives.vector.*
 import org.jetbrains.kotlin.com.intellij.openapi.util.Key
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.com.intellij.psi.PsiWhiteSpace
