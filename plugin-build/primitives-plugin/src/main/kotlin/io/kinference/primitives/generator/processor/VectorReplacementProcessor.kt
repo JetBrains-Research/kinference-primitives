@@ -121,9 +121,12 @@ internal class VectorReplacementProcessor(val primitive: Primitive<*, *>) {
             }
 
             "PrimitiveSlice" -> {
-                if (args.size != 2) return null
+                if (args.size != 2 && args.size != 1) return null
                 val src = args[0].text
-                val offset = args[1].text
+                val offset = when (args.size) {
+                    2 -> args[1].text
+                    else -> "0"
+                }
                 Triple(
                     "${vecName}.fromArray($vecSpecies, $src, $offset + _vec_internal_idx)",
                     "$src[$offset + _vec_internal_idx]",
