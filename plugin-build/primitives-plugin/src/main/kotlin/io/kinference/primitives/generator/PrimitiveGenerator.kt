@@ -210,7 +210,7 @@ internal class PrimitiveGenerator(
                         return
                     }
                     val replacement = replacementProcessor.getReplacement(expression, currentPrimitive)
-                    if (replacement.isNullOrEmpty()) {
+                    if (replacement == null) {
                         super.visitDotQualifiedExpression(expression); return
                     } else builder.append(replacement)
                 }

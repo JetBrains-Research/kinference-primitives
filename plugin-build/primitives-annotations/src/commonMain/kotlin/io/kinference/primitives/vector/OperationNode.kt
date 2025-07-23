@@ -4,63 +4,43 @@ package io.kinference.primitives.vector
 
 import io.kinference.primitives.types.PrimitiveArray
 import io.kinference.primitives.types.PrimitiveType
+import io.kinference.primitives.types.toPrimitive
 
 sealed class OpNode() {
-    public fun into(dest: PrimitiveArray, offset: Int, len: Int) {
+    public fun into(dest: PrimitiveArray, offset: Int, len: Int): Nothing =
         throw UnsupportedOperationException()
-    }
-    public fun reduce(operation: AssociativeWrapper, len: Int): PrimitiveType {
+
+    public fun reduce(operation: AssociativeWrapper, len: Int): PrimitiveType =
         throw UnsupportedOperationException()
-    }
 
-    internal abstract val isValue: Boolean
-    //internal abstract fun linReplace(): String
-    //internal abstract fun vecReplace(): String
 }
 
-class PrimitiveSlice(val src: PrimitiveArray, val offset: Int = 0) : OpNode() {
-    override val isValue: Boolean = false
+final class PrimitiveSlice(val src: PrimitiveArray, val offset: Int = 0) : OpNode() {}
+
+final class Value(val value: PrimitiveType) : OpNode() {}
+
+sealed class UnaryOp(val arg: OpNode) : OpNode() {}
+
+sealed class BinaryOp(val left: OpNode, val right: OpNode) : OpNode() {}
+
+sealed class AssociativeWrapper(){}
+
+class Exp(arg: OpNode): UnaryOp(arg){}
+
+class Add(left: OpNode, right: OpNode): BinaryOp(left, right){}
+class Neg(arg: OpNode): UnaryOp(arg){}
+class Log(arg: OpNode): UnaryOp(arg){}
+
+class Sub(left: OpNode, right: OpNode): BinaryOp(left, right){}
+class Mul(left: OpNode, right: OpNode): BinaryOp(left, right){}
+class Div(left: OpNode, right: OpNode): BinaryOp(left, right){}
+class Pow(left: OpNode, right: OpNode): BinaryOp(left, right){}
+class Max(left: OpNode, right: OpNode): BinaryOp(left, right){}
+class Min(left: OpNode, right: OpNode): BinaryOp(left, right){}
+
+object ADD: AssociativeWrapper(){}
+object MUL: AssociativeWrapper(){}
+object MAX: AssociativeWrapper(){}
+
+fun main(){
 }
-
-class UnaryOp(val arg: OpNode, val operation: UnaryWrapper) : OpNode() {
-    override val isValue: Boolean = arg.isValue
-}
-
-class BinaryOp(val left: OpNode, val right: OpNode, val operation: BinaryWrapper) : OpNode() {
-    override val isValue: Boolean = left.isValue && right.isValue
-}
-
-class Value(val value: PrimitiveType) : OpNode() {
-    override val isValue: Boolean = true
-}
-
-sealed class UnaryWrapper() {
-}
-
-sealed class BinaryWrapper() {
-}
-
-sealed class AssociativeWrapper() : BinaryWrapper() {
-}
-
-object Abs : UnaryWrapper() {}
-
-object Exp : UnaryWrapper() {}
-
-object Log : UnaryWrapper() {}
-
-object Neg : UnaryWrapper() {}
-
-object Add : AssociativeWrapper() {}
-
-object Sub : BinaryWrapper() {}
-
-object Mul : AssociativeWrapper() {}
-
-object Div : BinaryWrapper() {}
-
-object Pow : BinaryWrapper() {}
-
-object Max : AssociativeWrapper() {}
-
-object Min : BinaryWrapper() {}

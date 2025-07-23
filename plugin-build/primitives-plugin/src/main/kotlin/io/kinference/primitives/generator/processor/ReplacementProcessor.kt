@@ -13,11 +13,13 @@ import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.com.intellij.openapi.util.Key
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.com.intellij.psi.impl.source.tree.LeafPsiElement
+import org.jetbrains.kotlin.js.descriptorUtils.getKotlinTypeFqName
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.isExtensionDeclaration
 import org.jetbrains.kotlin.psi.psiUtil.visibilityModifier
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
+import org.jetbrains.kotlin.types.typeUtil.supertypes
 
 internal class ReplacementProcessor(private val context: BindingContext, private val collector: MessageCollector) {
     companion object {
@@ -46,7 +48,6 @@ internal class ReplacementProcessor(private val context: BindingContext, private
             (PrimitiveArray::class.qualifiedName!! + ".Companion") to { it.arrayTypeName }
         )
 
-        private val nodeTypes = setOf("BinaryOp", "UnaryOp", "PrimitiveSlice", "Value")
     }
 
 
@@ -99,19 +100,26 @@ internal class ReplacementProcessor(private val context: BindingContext, private
 
     fun getReplacement(expr: KtDotQualifiedExpression, primitive: Primitive<*, *>): String? {
         val receiver = expr.receiverExpression
-        val sel = expr.selectorExpression ?: return null
-        if (sel !is KtCallExpression) return null
-        val args = sel.valueArguments
-        val callName = sel.calleeExpression?.text ?: return null
-        return if (callName == "into" && args.size == 3) {
+        val selector = expr.selectorExpression ?: return null
+        if (selector !is KtCallExpression) return null
+
+        val args = selector.valueArguments
+        val callName = selector.calleeExpression?.text ?: return null
+
+        val receiverType = context.getType(receiver) ?: return null
+        val receiverSuperTypes = receiverType.supertypes().map { it.getKotlinTypeFqName(false) }
+        if(VectorReplacementProcessor.opNodeTypename !in receiverSuperTypes) return null
+
+        val vecProcessor = VectorReplacementProcessor(context, primitive)
+        val (vecReplacement, linReplacement, isValue) = vecProcessor.process(receiver, collector)?: return ""
+
+        if (callName == "into" && args.size == 3) {
             val dest = args[0].text
             val destOffset = args[1].text
             val len = args[2].text
 
-            val vecProcessor = VectorReplacementProcessor(primitive)
-            val (vecReplacement, linearReplacement, _) = vecProcessor.process(receiver, collector) ?: return ""
-            if (primitive.dataType in DataType.VECTORIZABLE.resolve())
-                """
+            if (primitive.dataType in DataType.VECTORIZABLE.resolve() && !isValue)
+                return """
                 val vectorSpecies = ${vecProcessor.vecSpecies}
                 val vectorLen = vectorSpecies.length()
                 val vecEnd = $len - ($len % vectorLen)
@@ -119,25 +127,26 @@ internal class ReplacementProcessor(private val context: BindingContext, private
                     $vecReplacement.intoArray($dest, $destOffset + _vec_internal_idx)
                 }
                 for(_vec_internal_idx in vecEnd until $len) {
-                    $dest[$destOffset + _vec_internal_idx] = $linearReplacement
+                    $dest[$destOffset + _vec_internal_idx] = $linReplacement
                 }
                 """.trimIndent()
             else
-                """
-                for(_vec_internal_idx in vecEnd until $len) {
-                    $dest[$destOffset + _vec_internal_idx] = $linearReplacement
+                return """
+                for(_vec_internal_idx in 0 until $len) {
+                    $dest[$destOffset + _vec_internal_idx] = $linReplacement
                }""".trimIndent()
         } else if (callName == "reduce" && args.size == 2) {
-            val vecProcessor = VectorReplacementProcessor(primitive)
-            val opName = args[0].text
+            val handle = args[0].text
             val len = args[1].text
-            val handle = VectorReplacementProcessor.vectorHandles[opName] ?: return ""
+
+            if(VectorReplacementProcessor.isAssoc[handle] != true) return ""
             val neutral = vecProcessor.neutralElement[handle] ?: return ""
-            val (vecReplacement, linReplacement, _) = vecProcessor.process(receiver, collector) ?: return ""
-            val linearOp = VectorReplacementProcessor.binaryLinearReplacements[opName] ?: return ""
+
+            val linearOp = VectorReplacementProcessor.binaryLinearReplacements[handle] ?: return ""
             val linAccumulate = linearOp("ret", linReplacement)
+
             if (primitive.dataType in DataType.VECTORIZABLE.resolve()) {
-                """{
+                return """{
                     val vectorSpecies = ${vecProcessor.vecSpecies}
                     val vectorLen = vectorSpecies.length()
                     val vecEnd = $len - ($len % vectorLen)
@@ -153,16 +162,17 @@ internal class ReplacementProcessor(private val context: BindingContext, private
                 }.invoke()
                 """.trimIndent()
             } else {
-                """{
+                return """{
                     var ret = $neutral
-                    for(_vec_internal_idx in vecEnd until $len) {
+                    for(_vec_internal_idx in 0 until $len) {
                         ret = $linAccumulate
                     }
                     ret
                 }.invoke()
                 """.trimIndent()
             }
-        } else null
+
+        } else return ""
     }
 
 
