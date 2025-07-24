@@ -39,7 +39,7 @@ enum class DataType {
      * Primitives would remain the same
      */
     fun resolve(): Set<DataType> {
-        return when(this) {
+        return when (this) {
             ALL -> setOf(BYTE, SHORT, INT, LONG, UBYTE, USHORT, UINT, ULONG, FLOAT, DOUBLE, BOOLEAN)
             NUMBER -> setOf(BYTE, SHORT, INT, LONG, UBYTE, USHORT, UINT, ULONG, FLOAT, DOUBLE)
             VECTORIZABLE -> setOf(BYTE, SHORT, INT, LONG, FLOAT, DOUBLE)

@@ -6,6 +6,7 @@ import io.kinference.primitives.annotations.MakePublic
 import io.kinference.primitives.generator.*
 import io.kinference.primitives.generator.errors.require
 import io.kinference.primitives.types.*
+import io.kinference.primitives.vector.*
 import io.kinference.primitives.utils.psi.forced
 import io.kinference.primitives.utils.psi.isAnnotatedWith
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
@@ -58,8 +59,6 @@ internal class ReplacementProcessor(private val context: BindingContext, private
             }
             return null
         }
-        if (klass.isAnnotatedWith<GenerateVector>(context))
-            return ""
 
         return klass.specialize(primitive, collector)
 
@@ -108,10 +107,10 @@ internal class ReplacementProcessor(private val context: BindingContext, private
 
         val receiverType = context.getType(receiver) ?: return null
         val receiverSuperTypes = receiverType.supertypes().map { it.getKotlinTypeFqName(false) }
-        if(VectorReplacementProcessor.opNodeTypename !in receiverSuperTypes) return null
+        if (VectorReplacementProcessor.opNodeTypename !in receiverSuperTypes) return null
 
         val vecProcessor = VectorReplacementProcessor(context, primitive)
-        val (vecReplacement, linReplacement, isValue) = vecProcessor.process(receiver, collector)?: return ""
+        val (vecReplacement, linReplacement, isValue) = vecProcessor.process(receiver, collector) ?: return ""
 
         if (callName == "into" && args.size == 3) {
             val dest = args[0].text
@@ -139,7 +138,7 @@ internal class ReplacementProcessor(private val context: BindingContext, private
             val handle = args[0].text
             val len = args[1].text
 
-            if(VectorReplacementProcessor.isAssoc[handle] != true) return ""
+            if (VectorReplacementProcessor.isAssoc[handle] != true) return ""
             val neutral = vecProcessor.neutralElement[handle] ?: return ""
 
             val linearOp = VectorReplacementProcessor.binaryLinearReplacements[handle] ?: return ""
