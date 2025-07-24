@@ -126,13 +126,13 @@ internal class ReplacementProcessor(private val context: BindingContext, private
                     $vecReplacement.intoArray($dest, $destOffset + _vec_internal_idx)
                 }
                 for(_vec_internal_idx in vecEnd until $len) {
-                    $dest[$destOffset + _vec_internal_idx] = $linReplacement
+                    $dest[$destOffset + _vec_internal_idx] = $linReplacement.${toType(primitive)}()
                 }
                 """.trimIndent()
             else
                 return """
                 for(_vec_internal_idx in 0 until $len) {
-                    $dest[$destOffset + _vec_internal_idx] = $linReplacement
+                    $dest[$destOffset + _vec_internal_idx] = $linReplacement.${toType(primitive)}()
                }""".trimIndent()
         } else if (callName == "reduce" && args.size == 2) {
             val handle = args[0].text
