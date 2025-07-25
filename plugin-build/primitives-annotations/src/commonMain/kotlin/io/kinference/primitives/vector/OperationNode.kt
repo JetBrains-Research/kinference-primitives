@@ -11,7 +11,7 @@ import io.kinference.primitives.vector.Sub
 import io.kinference.primitives.vector.UnaryOp
 
 sealed class OpNode() {
-    public fun into(dest: PrimitiveArray, offset: Int, len: Int): Nothing =
+    public fun into(dest: PrimitiveArray, offset: Int, len: Int): Unit =
         throw UnsupportedOperationException()
 
     public fun reduce(operation: AssociativeWrapper, len: Int): PrimitiveType =
@@ -73,6 +73,7 @@ class Min(left: OpNode, right: OpNode): BinaryOp(left, right){
 object ADD: AssociativeWrapper(){}
 object MUL: AssociativeWrapper(){}
 object MAX: AssociativeWrapper(){}
+object MIN: AssociativeWrapper(){}
 
 sealed class VecMask(){}
 
