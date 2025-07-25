@@ -24,6 +24,7 @@ internal class PrimitiveGenerator(
 ) {
 
     private data class PrimitiveContext(val type1: Primitive<*, *>? = null, val type2: Primitive<*, *>? = null, val type3: Primitive<*, *>? = null)
+    private var vecCount = 0;
 
     fun generate(): Set<File> {
         val results = HashSet<File>()
@@ -209,10 +210,13 @@ internal class PrimitiveGenerator(
                         super.visitDotQualifiedExpression(expression)
                         return
                     }
-                    val replacement = replacementProcessor.getReplacement(expression, currentPrimitive)
+                    val replacement = replacementProcessor.getReplacement(expression, currentPrimitive, vecCount)
                     if (replacement == null) {
                         super.visitDotQualifiedExpression(expression); return
-                    } else builder.append(replacement)
+                    } else {
+                        vecCount += 1
+                        builder.append(replacement)
+                    }
                 }
             })
 

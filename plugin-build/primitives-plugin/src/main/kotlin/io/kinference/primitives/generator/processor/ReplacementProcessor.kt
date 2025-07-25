@@ -97,7 +97,7 @@ internal class ReplacementProcessor(private val context: BindingContext, private
         }
     }
 
-    fun getReplacement(expr: KtDotQualifiedExpression, primitive: Primitive<*, *>): String? {
+    fun getReplacement(expr: KtDotQualifiedExpression, primitive: Primitive<*, *>, idx: Int): String? {
         val receiver = expr.receiverExpression
         val selector = expr.selectorExpression ?: return null
         if (selector !is KtCallExpression) return null
@@ -112,6 +112,11 @@ internal class ReplacementProcessor(private val context: BindingContext, private
         val vecProcessor = VectorReplacementProcessor(context, primitive)
         val (vecReplacement, linReplacement, isValue) = vecProcessor.process(receiver, collector) ?: return ""
 
+        val toPrimitive = "${toType(primitive)}()"
+        val vecLen = "_vecLen_$idx"
+        val vecEnd = "_vecEnd_$idx"
+        val vecIdx = "_vec_internal_idx"
+
         if (callName == "into" && args.size == 3) {
             val dest = args[0].text
             val destOffset = args[1].text
@@ -119,20 +124,19 @@ internal class ReplacementProcessor(private val context: BindingContext, private
 
             if (primitive.dataType in DataType.VECTORIZABLE.resolve() && !isValue)
                 return """
-                val vectorSpecies = ${vecProcessor.vecSpecies}
-                val vectorLen = vectorSpecies.length()
-                val vecEnd = $len - ($len % vectorLen)
-                for (_vec_internal_idx in 0 until vecEnd step vectorLen) {
+                val $vecLen = ${vecProcessor.vecSpecies}.length()
+                val $vecEnd = $len - ($len % $vecLen)
+                for ($vecIdx in 0 until $vecEnd step $vecLen) {
                     $vecReplacement.intoArray($dest, $destOffset + _vec_internal_idx)
                 }
-                for(_vec_internal_idx in vecEnd until $len) {
-                    $dest[$destOffset + _vec_internal_idx] = $linReplacement.${toType(primitive)}()
+                for($vecIdx in $vecEnd until $len) {
+                    $dest[$destOffset + $vecIdx] = $linReplacement.$toPrimitive
                 }
                 """.trimIndent()
             else
                 return """
-                for(_vec_internal_idx in 0 until $len) {
-                    $dest[$destOffset + _vec_internal_idx] = $linReplacement.${toType(primitive)}()
+                for($vecIdx in 0 until $len) {
+                    $dest[$destOffset + $vecIdx] = $linReplacement.$toPrimitive
                }""".trimIndent()
         } else if (callName == "reduce" && args.size == 2) {
             val handle = args[0].text
@@ -146,27 +150,26 @@ internal class ReplacementProcessor(private val context: BindingContext, private
 
             if (primitive.dataType in DataType.VECTORIZABLE.resolve()) {
                 return """{
-                    val vectorSpecies = ${vecProcessor.vecSpecies}
-                    val vectorLen = vectorSpecies.length()
-                    val vecEnd = $len - ($len % vectorLen)
-                    var accumulator = ${vecProcessor.vecName}.broadcast(vectorSpecies, $neutral)
-                    for (_vec_internal_idx in 0 until vecEnd step vectorLen) {
+                    val $vecLen = ${vecProcessor.vecSpecies}.length()
+                    val $vecEnd = $len - ($len % $vecLen)
+                    var accumulator = ${vecProcessor.vecName}.broadcast(${vecProcessor.vecSpecies}, $neutral)
+                    for ($vecIdx in 0 until $vecEnd step $vecLen) {
                         accumulator = accumulator.lanewise(VectorOperators.$handle, $vecReplacement)
                     }
                     var ret = accumulator.reduceLanes(VectorOperators.$handle)
-                    for(_vec_internal_idx in vecEnd until $len) {
-                        ret = $linAccumulate
+                    for($vecIdx in $vecEnd until $len) {
+                        ret = $linAccumulate.$toPrimitive
                     }
-                    ret
+                    ret.$toPrimitive
                 }.invoke()
                 """.trimIndent()
             } else {
                 return """{
                     var ret = $neutral
-                    for(_vec_internal_idx in 0 until $len) {
-                        ret = $linAccumulate
+                    for($vecIdx in 0 until $len) {
+                        ret = $linAccumulate.$toPrimitive
                     }
-                    ret
+                    ret.$toPrimitive
                 }.invoke()
                 """.trimIndent()
             }

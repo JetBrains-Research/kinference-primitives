@@ -29,8 +29,8 @@ internal class VectorReplacementProcessor(private val context: BindingContext, v
             "SUB" to { x: String, y: String -> "($x - $y)" },
             "MUL" to { x: String, y: String -> "($x * $y)" },
             "DIV" to { x: String, y: String -> "($x / $y)" },
-            "MAX" to { x: String, y: String -> "max($x, $y)" },
-            "MIN" to { x: String, y: String -> "min($x, $y)" },
+            "MAX" to { x: String, y: String -> "maxOf($x, $y)" },
+            "MIN" to { x: String, y: String -> "minOf($x, $y)" },
             "POW" to { x: String, y: String -> "($x).pow($y)" },
         ).withDefault { null }
 
