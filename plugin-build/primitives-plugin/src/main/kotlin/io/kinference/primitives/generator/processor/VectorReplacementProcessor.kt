@@ -3,12 +3,26 @@ package io.kinference.primitives.generator.processor
 import com.sun.org.apache.xpath.internal.operations.Bool
 import io.kinference.primitives.generator.Primitive
 import io.kinference.primitives.vector.*
+import org.gradle.internal.impldep.com.esotericsoftware.kryo.serializers.FieldSerializer
 import org.gradle.internal.impldep.org.h2.engine.Right
+import org.jetbrains.kotlin.cfg.getElementParentDeclaration
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.js.descriptorUtils.getKotlinTypeFqName
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtExpression
+import org.jetbrains.kotlin.psi.KtSimpleNameExpression
+import org.jetbrains.kotlin.psi.psiUtil.isContextualDeclaration
 import org.jetbrains.kotlin.resolve.BindingContext
+import org.jetbrains.kotlin.resolve.calls.util.getType
+import org.jetbrains.kotlin.com.intellij.psi.PsiElement
+import org.jetbrains.kotlin.descriptors.impl.referencedProperty
+import org.jetbrains.kotlin.gradle.utils.loadPropertyFromResources
+import org.jetbrains.kotlin.load.kotlin.toSourceElement
+import org.jetbrains.kotlin.psi.KtDeclaration
+import org.jetbrains.kotlin.psi.KtProperty
+import org.jetbrains.kotlin.psi.declarationRecursiveVisitor
+import org.jetbrains.kotlin.resolve.source.getPsi
+import javax.naming.Binding
 
 
 internal class VectorReplacementProcessor(private val context: BindingContext, val primitive: Primitive<*, *>) {
@@ -88,6 +102,7 @@ internal class VectorReplacementProcessor(private val context: BindingContext, v
         )
 
         val opNodeTypename = OpNode::class.qualifiedName
+        val opNodeTypes = OpNode::class.sealedSubclasses.map { it.qualifiedName }
         val unaryOpNames = UnaryOp::class.sealedSubclasses.map { it.qualifiedName }
         val binaryOpNames = BinaryOp::class.sealedSubclasses.map { it.qualifiedName }
         val valueType = Value::class.qualifiedName
@@ -107,12 +122,42 @@ internal class VectorReplacementProcessor(private val context: BindingContext, v
         "MAX" to "${primitive.typeName}.MIN_VALUE"
     ).withDefault { null }
 
+    var valueDeclarations: String = ""
+    var vecDeclarations: String = ""
+    var linDeclarations: String = ""
+    var localVariables: Set<String> = emptySet()
+
+    fun processDeclaration(expr: KtExpression, collector: MessageCollector): Triple<String, String, Boolean>? {
+        expr as? KtSimpleNameExpression ?: return null // Triple("NOT SIMPLE: ${expr.text}", "a", false)
+        val varName = expr.text
+        val descriptor = context.get(BindingContext.REFERENCE_TARGET, expr) ?: return null //Triple("NOT_DECL: ${expr.text}", "NOT_DECL", false)
+        val declaration = descriptor.toSourceElement.getPsi() ?: return null //Triple("NOT_DECL_PSI: ${expr.text}", "NOT_DECL", false)
+        declaration as? KtDeclaration ?: return null //Triple("NOT_DECL_EXPR: ${expr.text}", "NOT_DECL", false)
+        declaration as? KtProperty ?: return null // Triple("NOT_DECL_PROPERTY: ${expr.text}", "NOT_DECL", false)
+        val actualBody = declaration.initializer ?: return null //Triple("NOT_DECL_BODY: ${expr.text}", "NOT_DECL", false)
+        //return Triple("BODY: ${actualBody.text}", "", false)
+        val (vecReplacement, linReplacement, value) = process(actualBody, collector) ?: return null
+        if (varName !in localVariables) {
+            localVariables = localVariables + varName
+            if (value) {
+                valueDeclarations += "val ${varName}_vec = $vecReplacement\n"
+                valueDeclarations += "val ${varName}_lin = $linReplacement\n"
+            } else {
+                vecDeclarations += "val ${varName}_vec = $vecReplacement\n"
+                linDeclarations += "val ${varName}_lin = $linReplacement\n"
+            }
+        }
+        return Triple("${varName}_vec", "${varName}_lin", value)
+    }
+
     fun process(expr: KtExpression?, collector: MessageCollector): Triple<String, String, Boolean>? {
         if (expr == null) return null
-        val exprType = context.getType(expr) ?: return null
+        if (expr !is KtCallExpression) {
+            return processDeclaration(expr, collector)
+        }
+        val exprType = context.getType(expr) ?: return Triple("NOT_TYPED", "NOT_TYPED", false)
         val exprTypename = exprType.getKotlinTypeFqName(false)
         val shortName = exprTypename.substringAfterLast('.')
-        if (expr !is KtCallExpression) return null
         val args = expr.valueArguments
         return when {
             exprTypename in unaryOpNames -> {

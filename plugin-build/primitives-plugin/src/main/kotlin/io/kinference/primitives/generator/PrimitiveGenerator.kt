@@ -4,6 +4,7 @@ import io.kinference.primitives.annotations.*
 import io.kinference.primitives.generator.errors.require
 import io.kinference.primitives.generator.processor.RemovalProcessor
 import io.kinference.primitives.generator.processor.ReplacementProcessor
+import io.kinference.primitives.generator.processor.VectorReplacementProcessor
 import io.kinference.primitives.types.DataType
 import io.kinference.primitives.utils.crossProduct
 import io.kinference.primitives.utils.psi.*
@@ -11,11 +12,14 @@ import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.com.intellij.psi.PsiWhiteSpace
 import org.jetbrains.kotlin.com.intellij.psi.impl.source.tree.LeafPsiElement
+import org.jetbrains.kotlin.js.descriptorUtils.getKotlinTypeFqName
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.visibilityModifier
 import org.jetbrains.kotlin.resolve.BindingContext
+import org.jetbrains.kotlin.types.typeUtil.supertypes
 import java.io.File
+import java.util.Vector
 import kotlin.io.path.Path
 
 internal class PrimitiveGenerator(
@@ -24,6 +28,7 @@ internal class PrimitiveGenerator(
 ) {
 
     private data class PrimitiveContext(val type1: Primitive<*, *>? = null, val type2: Primitive<*, *>? = null, val type3: Primitive<*, *>? = null)
+
     private var vecCount = 0;
 
     fun generate(): Set<File> {
@@ -198,6 +203,20 @@ internal class PrimitiveGenerator(
                         is KtNamedFunction -> builder.append(replacementProcessor.getReplacement(parent, currentPrimitive) ?: element.text)
                         else -> builder.append(element.text)
                     }
+                }
+
+                override fun visitDeclaration(dcl: KtDeclaration) {
+                    if (file.isAnnotatedWith<GenerateVector>(context) && dcl is KtProperty) {
+                        val init = dcl.initializer
+                        if (init != null) {
+                            val type = context.getType(init)
+                            if (type != null) {
+                                val supertypes = type.supertypes().map { it.getKotlinTypeFqName(false) }.toSet()
+                                if (VectorReplacementProcessor.opNodeTypename in supertypes) return
+                            }
+                        }
+                    }
+                    super.visitDeclaration(dcl)
                 }
 
                 override fun visitSimpleNameExpression(expression: KtSimpleNameExpression) {

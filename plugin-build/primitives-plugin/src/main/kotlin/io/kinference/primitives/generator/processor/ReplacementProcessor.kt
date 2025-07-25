@@ -126,10 +126,13 @@ internal class ReplacementProcessor(private val context: BindingContext, private
                 return """
                 val $vecLen = ${vecProcessor.vecSpecies}.length()
                 val $vecEnd = $len - ($len % $vecLen)
+                ${vecProcessor.valueDeclarations}
                 for ($vecIdx in 0 until $vecEnd step $vecLen) {
+                    ${vecProcessor.vecDeclarations}
                     $vecReplacement.intoArray($dest, $destOffset + _vec_internal_idx)
                 }
                 for($vecIdx in $vecEnd until $len) {
+                    ${vecProcessor.linDeclarations}
                     $dest[$destOffset + $vecIdx] = $linReplacement.$toPrimitive
                 }
                 """.trimIndent()
