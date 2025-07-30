@@ -25,6 +25,7 @@ internal class RemovalProcessor(private val context: BindingContext) {
             GenerateNameFromPrimitives::class.qualifiedName,
             GeneratePrimitives::class.qualifiedName,
             SpecifyPrimitives::class.qualifiedName,
+            GenerateVector::class.qualifiedName,
         )
     }
 

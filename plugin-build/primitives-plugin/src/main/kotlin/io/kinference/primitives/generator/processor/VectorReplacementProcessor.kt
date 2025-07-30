@@ -1,8 +1,26 @@
 package io.kinference.primitives.generator.processor
 
+import io.kinference.primitives.annotations.BindPrimitives
+import io.kinference.primitives.annotations.GenerateVector
+import io.kinference.primitives.annotations.SpecifyPrimitives
 import io.kinference.primitives.generator.Primitive
+import io.kinference.primitives.generator.PrimitiveGenerator.PrimitiveContext
+import io.kinference.primitives.generator.errors.require
+import io.kinference.primitives.generator.getExcludes
+import io.kinference.primitives.generator.getIncludes
+import io.kinference.primitives.generator.getTypes
+import io.kinference.primitives.generator.isVectorClass
+import io.kinference.primitives.generator.toPrimitive
+import io.kinference.primitives.types.DataType
+import io.kinference.primitives.utils.crossProduct
+import io.kinference.primitives.utils.psi.KtDefaultVisitor
+import io.kinference.primitives.utils.psi.isAnnotatedWith
+import io.kinference.primitives.utils.psi.isAnnotation
 import io.kinference.primitives.vector.*
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
+import org.jetbrains.kotlin.com.intellij.psi.PsiWhiteSpace
+import org.jetbrains.kotlin.com.intellij.psi.impl.source.tree.LeafPsiElement
 import org.jetbrains.kotlin.js.descriptorUtils.getKotlinTypeFqName
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtExpression
@@ -10,14 +28,27 @@ import org.jetbrains.kotlin.psi.KtSimpleNameExpression
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.idea.references.KtSimpleNameReference
+import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.load.kotlin.toSourceElement
+import org.jetbrains.kotlin.psi.KtAnnotatedExpression
+import org.jetbrains.kotlin.psi.KtAnnotationEntry
+import org.jetbrains.kotlin.psi.KtClass
+import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtDeclaration
+import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
+import org.jetbrains.kotlin.psi.KtElement
+import org.jetbrains.kotlin.psi.KtImportDirective
+import org.jetbrains.kotlin.psi.KtImportList
+import org.jetbrains.kotlin.psi.KtModifierList
+import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtProperty
+import org.jetbrains.kotlin.psi.KtTypeReference
 import org.jetbrains.kotlin.psi.KtVariableDeclaration
+import org.jetbrains.kotlin.psi.psiUtil.visibilityModifier
 import org.jetbrains.kotlin.resolve.source.getPsi
 
 
-internal class VectorReplacementProcessor(private val context: BindingContext, val primitive: Primitive<*, *>) {
+internal class VectorReplacementProcessor(private val context: BindingContext, val primitive: Primitive<*, *>, val collector: MessageCollector) {
     val vecName = "${primitive.typeName}Vector"
     val vecSpecies = "$vecName.SPECIES_PREFERRED"
     val vecLen = "$vecName.length()"
@@ -85,13 +116,10 @@ internal class VectorReplacementProcessor(private val context: BindingContext, v
         )
 
         val opNodeTypename = OpNode::class.qualifiedName
-        val opNodeTypes = OpNode::class.sealedSubclasses.map { it.qualifiedName }
         val unaryOpNames = UnaryOp::class.sealedSubclasses.map { it.qualifiedName }
         val binaryOpNames = BinaryOp::class.sealedSubclasses.map { it.qualifiedName }
-        val valueType = Value::class.qualifiedName
+        val scalarType = Value::class.qualifiedName
         val primitiveSliceType = PrimitiveSlice::class.qualifiedName
-        val associativeWrapperType = AssociativeWrapper::class.qualifiedName
-        val maskTypes = VecMask::class.sealedSubclasses.map { it.qualifiedName }
         val maskBinaryOpTypes = MaskBinaryOp::class.sealedSubclasses.map { it.qualifiedName }
         val maskUnaryOpTypes = MaskUnaryOp::class.sealedSubclasses.map { it.qualifiedName }
         val comparatorTypes = Comparator::class.sealedSubclasses.map { it.qualifiedName }
@@ -105,12 +133,12 @@ internal class VectorReplacementProcessor(private val context: BindingContext, v
         "MAX" to "${primitive.typeName}.MIN_VALUE"
     ).withDefault { null }
 
-    var valueDeclarations: String = ""
+    var scalarDeclarations: String = ""
     var vecDeclarations: String = ""
     var linDeclarations: String = ""
     var localVariables: Set<String> = emptySet()
 
-    fun processDeclaration(expr: KtExpression, collector: MessageCollector): Triple<String, String, Boolean>? {
+    private fun processDeclaration(expr: KtExpression): Triple<String, String, Boolean>? {
         if (expr !is KtSimpleNameExpression) return null
         val varName = expr.text
 
@@ -120,90 +148,91 @@ internal class VectorReplacementProcessor(private val context: BindingContext, v
         if (declaration !is KtVariableDeclaration) return null
         val actualBody = declaration.initializer ?: return null //Triple("NOT_DECL_BODY: ${expr.text}", "NOT_DECL", false)
         //return Triple("BODY: ${actualBody.text}", "", false)
-        val (vecReplacement, linReplacement, value) = process(actualBody, collector) ?: return null
+        val (vecReplacement, linReplacement, scalar) = process(actualBody) ?: return null
         if (varName !in localVariables) {
             localVariables = localVariables + varName
-            if (value) {
-                valueDeclarations += "val ${varName}_vec = $vecReplacement\n"
-                valueDeclarations += "val ${varName}_lin = $linReplacement\n"
+            if (scalar) {
+                scalarDeclarations += "val ${varName}_vec = $vecReplacement\n"
+                scalarDeclarations += "val ${varName}_lin = $linReplacement\n"
             } else {
                 vecDeclarations += "val ${varName}_vec = $vecReplacement\n"
                 linDeclarations += "val ${varName}_lin = $linReplacement\n"
             }
         }
-        return Triple("${varName}_vec", "${varName}_lin", value)
+        return Triple("${varName}_vec", "${varName}_lin", scalar)
     }
 
-    fun process(expr: KtExpression?, collector: MessageCollector): Triple<String, String, Boolean>? {
+
+    fun process(expr: KtExpression?): Triple<String, String, Boolean>? {
         if (expr == null) return null
         if (expr !is KtCallExpression) {
-            return processDeclaration(expr, collector)
+            return processDeclaration(expr)
         }
-        val exprType = context.getType(expr) ?: return Triple("NOT_TYPED", "NOT_TYPED", false)
+        val exprType = context.getType(expr) ?: return null
         val exprTypename = exprType.getKotlinTypeFqName(false)
         val shortName = exprTypename.substringAfterLast('.')
         val args = expr.valueArguments
-        return when {
-            exprTypename in unaryOpNames -> {
+        return when (exprTypename) {
+            in unaryOpNames -> {
                 if (args.size != 1 && args.size != 2) return null
                 val childExpr = args[0].getArgumentExpression()
                 val masked = args.size == 2
-                var (childVector, childLinear, isValue) = process(childExpr, collector) ?: return null
+                var (childVector, childLinear, isScalar) = process(childExpr) ?: return null
                 val handle = vectorHandles[shortName] ?: return null
                 val linReplace = unaryLinearReplacements[handle] ?: return null
                 var linear = linReplace(childLinear)
                 var vectorized = """$childVector
-                    .lanewise(VectorOperators.$handle""".trimIndent()
+                        .lanewise(VectorOperators.$handle""".trimIndent()
                 if (masked) {
-                    isValue = false
-                    val maskExpr = args[1].getArgumentExpression() ?: return null
-                    val (maskVector, maskLinear) = processMask(maskExpr, collector) ?: return null
+                    isScalar = false
+                    val maskExpr = args[1].getArgumentExpression()
+                    val (maskVector, maskLinear) = processMask(maskExpr) ?: return null
                     linear = "(if($maskLinear) $linear else $childLinear)"
                     vectorized += ", $maskVector)"
                 } else {
                     vectorized += ")"
                 }
-                Triple(vectorized, linear, isValue)
+                Triple(vectorized, linear, isScalar)
             }
 
-            exprTypename in binaryOpNames -> {
+            in binaryOpNames -> {
                 if (args.size != 2 && args.size != 3) return null
                 val masked = args.size == 3
-                val leftExpr = args[0].getArgumentExpression() ?: return null
-                val rightExpr = args[1].getArgumentExpression() ?: return null
+                val leftExpr = args[0].getArgumentExpression()
+                val rightExpr = args[1].getArgumentExpression()
                 val handle = vectorHandles[shortName] ?: return null
-                val (leftVector, leftLinear, leftValue) = process(leftExpr, collector) ?: return null
-                val (rightVector, rightLinear, rightValue) = process(rightExpr, collector) ?: return null
-                var isValue = leftValue && rightValue
+                val (leftVector, leftLinear, leftScalar) = process(leftExpr) ?: return null
+                val (rightVector, rightLinear, rightScalar) = process(rightExpr) ?: return null
+                var isScalar = leftScalar && rightScalar
                 var linear = binaryLinearReplacements[handle]?.invoke(leftLinear, rightLinear) ?: return null
 
-                var vectorized = if (rightValue) """$leftVector.
-                        lanewise(VectorOperators.$handle, $rightLinear""".trimIndent()
+                var vectorized = if (rightScalar) """$leftVector.
+                            lanewise(VectorOperators.$handle, $rightLinear""".trimIndent()
                 else """$leftVector
-                    .lanewise(VectorOperators.$handle, $rightVector""".trimIndent()
+                        .lanewise(VectorOperators.$handle, $rightVector""".trimIndent()
 
                 if (masked) {
-                    isValue = false
-                    val maskExpr = args[2].getArgumentExpression() ?: return null
-                    val (maskVector, maskLinear) = processMask(maskExpr, collector) ?: return null
+                    isScalar = false
+                    val maskExpr = args[2].getArgumentExpression()
+                    val (maskVector, maskLinear) = processMask(maskExpr) ?: return null
                     linear = "(if($maskLinear) $linear else $leftLinear)"
                     vectorized += ", $maskVector)"
                 } else {
                     vectorized += ")"
                 }
                 Triple(
-                    vectorized, linear, isValue
+                    vectorized, linear, isScalar
                 )
             }
 
-            exprTypename == valueType -> {
+            scalarType -> {
                 if (args.size != 1) return null
-                val linear = "${args[0].text}"
+                val linear = replaceLeaves(args[0].getArgumentExpression()?: return null)
                 val vectorized = "$vecName.broadcast($vecSpecies, $linear)"
                 Triple(vectorized, linear, true)
             }
 
-            exprTypename == primitiveSliceType -> {
+            primitiveSliceType -> {
                 if (args.size != 2 && args.size != 1) return null
                 val src = args[0].text
                 val offset = when (args.size) {
@@ -215,26 +244,26 @@ internal class VectorReplacementProcessor(private val context: BindingContext, v
                 )
             }
 
-            exprTypename == ifElseType -> {
+            ifElseType -> {
                 if (args.size != 3) return null
                 val mask = args[0].getArgumentExpression() ?: return null
                 val left = args[1].getArgumentExpression() ?: return null
                 val right = args[2].getArgumentExpression() ?: return null
-                val (maskVector, maskLinear) = processMask(mask, collector) ?: return null
-                val (leftVector, leftLinear, leftValue) = process(left, collector) ?: return null
-                val (rightVector, rightLinear, rightValue) = process(right, collector) ?: return null
-                val isValue = leftValue && rightValue
+                val (maskVector, maskLinear) = processMask(mask) ?: return null
+                val (leftVector, leftLinear, leftScalar) = process(left) ?: return null
+                val (rightVector, rightLinear, rightScalar) = process(right) ?: return null
+                val isScalar = leftScalar && rightScalar
                 val linear = "(if($maskLinear) $leftLinear else $rightLinear)"
                 val vectorized = """
-                    $rightVector.blend($leftVector, $maskVector)""".trimIndent()
-                Triple(vectorized, linear, isValue)
+                        $rightVector.blend($leftVector, $maskVector)""".trimIndent()
+                Triple(vectorized, linear, isScalar)
             }
 
             else -> null
         }
     }
 
-    fun processMask(expr: KtExpression?, collector: MessageCollector): Pair<String, String>? {
+    fun processMask(expr: KtExpression?): Pair<String, String>? {
         if (expr == null) return null
         val exprType = context.getType(expr) ?: return null
         val exprTypename = exprType.getKotlinTypeFqName(false)
@@ -245,7 +274,7 @@ internal class VectorReplacementProcessor(private val context: BindingContext, v
             exprTypename in maskUnaryOpTypes -> {
                 if (args.size != 1) return null
                 val child = args[0].getArgumentExpression() ?: return null
-                val (vecReplacement, linReplacement) = processMask(child, collector) ?: return null
+                val (vecReplacement, linReplacement) = processMask(child) ?: return null
                 val handle = maskHandles[shortName] ?: return null
                 val linReplacer = maskUnaryReplacement[handle] ?: return null
 
@@ -257,9 +286,9 @@ internal class VectorReplacementProcessor(private val context: BindingContext, v
             exprTypename in maskBinaryOpTypes -> {
                 if (args.size != 2) return null
                 val left = args[0].getArgumentExpression() ?: return null
-                val (leftVecReplacement, leftLinReplacement) = processMask(left, collector) ?: return null
+                val (leftVecReplacement, leftLinReplacement) = processMask(left) ?: return null
                 val right = args[0].getArgumentExpression() ?: return null
-                val (rightVecReplacement, rightLinReplacement) = processMask(right, collector) ?: return null
+                val (rightVecReplacement, rightLinReplacement) = processMask(right) ?: return null
                 val handle = maskHandles[shortName] ?: return null
                 val linReplacer = maskBinaryReplacement[handle] ?: return null
                 Pair(
@@ -272,9 +301,9 @@ internal class VectorReplacementProcessor(private val context: BindingContext, v
                 val leftExpr = args[0].getArgumentExpression() ?: return null
                 val rightExpr = args[1].getArgumentExpression() ?: return null
                 val handle = maskHandles[shortName] ?: return null
-                val (leftVector, leftLinear, leftValue) = process(leftExpr, collector) ?: return null
-                val (rightVector, rightLinear, rightValue) = process(rightExpr, collector) ?: return null
-                val isValue = leftValue && rightValue
+                val (leftVector, leftLinear, leftScalar) = process(leftExpr) ?: return null
+                val (rightVector, rightLinear, rightScalar) = process(rightExpr) ?: return null
+                val isScalar = leftScalar && rightScalar
                 val linear = comparatorReplacement[handle]?.invoke(leftLinear, rightLinear) ?: return null
                 val vectorized = """
                     $leftVector
@@ -285,5 +314,57 @@ internal class VectorReplacementProcessor(private val context: BindingContext, v
 
             else -> null
         }
+    }
+
+    private fun replaceLeaves(expr: KtExpression): String {
+        val builder = StringBuilder()
+        expr.accept(object : KtDefaultVisitor() {
+            val replacementProcessor = ReplacementProcessor(context, collector)
+            private var currentPrimitive = primitive
+
+            private fun KtElement.withPrimitive(primitive: Primitive<*, *>?, body: () -> Unit) {
+                collector.require(CompilerMessageSeverity.ERROR, this, primitive != null) {
+                    "Primitive was bound with @${BindPrimitives::class.simpleName} sub-annotation," +
+                        " but outer expression is not annotated with @${BindPrimitives::class.simpleName}"
+                }
+
+                val tmp = currentPrimitive
+                currentPrimitive = primitive
+                body()
+                currentPrimitive = tmp
+            }
+            override fun visitClass(klass: KtClass) {
+                if (primitive.dataType in klass.getExcludes(context)) return
+                if (klass.isAnnotatedWith<SpecifyPrimitives>(context) && primitive.dataType !in klass.getIncludes(context)!!) return
+
+                super.visitClass(klass)
+            }
+
+            override fun visitLeafElement(element: LeafPsiElement) {
+                if (replacementProcessor.haveReplaceText(element)) {
+                    builder.append(replacementProcessor.getReplacement(element))
+                    return
+                }
+
+                if (element.elementType != KtTokens.IDENTIFIER) {
+                    builder.append(element.text)
+                    return
+                }
+
+                when (val parent = element.parent) {
+                    is KtClassOrObject -> builder.append(replacementProcessor.getReplacement(parent, currentPrimitive) ?: element.text)
+                    is KtNamedFunction -> builder.append(replacementProcessor.getReplacement(parent, currentPrimitive) ?: element.text)
+                    else -> builder.append(element.text)
+                }
+            }
+
+
+            override fun visitSimpleNameExpression(expression: KtSimpleNameExpression) {
+                val replacement = replacementProcessor.getReplacement(expression, currentPrimitive)
+                builder.append(replacement ?: expression.text)
+            }
+
+        })
+        return builder.toString()
     }
 }

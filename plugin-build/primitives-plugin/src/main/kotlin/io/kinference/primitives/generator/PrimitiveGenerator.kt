@@ -72,7 +72,7 @@ internal class PrimitiveGenerator(
                 override fun visitImportList(importList: KtImportList) {
                     if (file.isAnnotatedWith<GenerateVector>(context) && primitive.dataType in DataType.VECTORIZABLE.resolve() && vectorize)
                         builder.appendLine("import io.kinference.ndarray.VecUtils.isModuleLoaded")
-                        builder.appendLine("import jdk.incubator.vector.*")
+                    builder.appendLine("import jdk.incubator.vector.*")
                     super.visitImportList(importList)
                 }
 
@@ -210,13 +210,7 @@ internal class PrimitiveGenerator(
                 override fun visitDeclaration(dcl: KtDeclaration) {
                     if (file.isAnnotatedWith<GenerateVector>(context) && dcl is KtProperty) {
                         val init = dcl.initializer
-                        if (init != null) {
-                            val type = context.getType(init)
-                            if (type != null) {
-                                val supertypes = type.supertypes().map { it.getKotlinTypeFqName(false) }.toSet()
-                                if (VectorReplacementProcessor.opNodeTypename in supertypes) return
-                            }
-                        }
+                        if (isVectorClass(init, context)) return
                     }
                     super.visitDeclaration(dcl)
                 }

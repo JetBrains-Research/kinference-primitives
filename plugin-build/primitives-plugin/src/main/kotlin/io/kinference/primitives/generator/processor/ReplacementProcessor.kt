@@ -109,12 +109,10 @@ internal class ReplacementProcessor(
         val args = selector.valueArguments
         val callName = selector.calleeExpression?.text ?: return null
 
-        val receiverType = context.getType(receiver) ?: return null
-        val receiverSuperTypes = receiverType.supertypes().map { it.getKotlinTypeFqName(false) }
-        if (VectorReplacementProcessor.opNodeTypename !in receiverSuperTypes) return null
+        if (!isVectorClass(receiver, context)) return null
 
-        val vecProcessor = VectorReplacementProcessor(context, primitive)
-        val (vecReplacement, linReplacement, isValue) = vecProcessor.process(receiver, collector) ?: return ""
+        val vecProcessor = VectorReplacementProcessor(context, primitive, collector)
+        val (vecReplacement, linReplacement, isScalar) = vecProcessor.process(receiver) ?: return null
 
         val toPrimitive = "${toType(primitive)}()"
         val vecLen = "_vecLen_$idx"
@@ -132,7 +130,7 @@ internal class ReplacementProcessor(
                 if($vecEnabled) {
                     val $vecLen = ${vecProcessor.vecSpecies}.length()
                     val $vecEnd = $len - ($len % $vecLen)
-                    ${vecProcessor.valueDeclarations}
+                    ${vecProcessor.scalarDeclarations}
                     for ($vecIdx in 0 until $vecEnd step $vecLen) {
                         ${vecProcessor.vecDeclarations}
                         $vecReplacement.intoArray($dest, $destOffset + _vec_internal_idx)
@@ -170,7 +168,7 @@ internal class ReplacementProcessor(
                         val $vecLen = ${vecProcessor.vecSpecies}.length()
                         val $vecEnd = $len - ($len % $vecLen)
                         var accumulator = ${vecProcessor.vecName}.broadcast(${vecProcessor.vecSpecies}, $neutral)
-                        ${vecProcessor.valueDeclarations}
+                        ${vecProcessor.scalarDeclarations}
                         for ($vecIdx in 0 until $vecEnd step $vecLen) {
                             ${vecProcessor.vecDeclarations}
                             accumulator = accumulator.lanewise(VectorOperators.$handle, $vecReplacement)
