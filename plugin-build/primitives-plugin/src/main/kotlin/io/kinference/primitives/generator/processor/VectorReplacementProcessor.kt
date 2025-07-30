@@ -1,28 +1,20 @@
 package io.kinference.primitives.generator.processor
 
-import com.sun.org.apache.xpath.internal.operations.Bool
 import io.kinference.primitives.generator.Primitive
 import io.kinference.primitives.vector.*
-import org.gradle.internal.impldep.com.esotericsoftware.kryo.serializers.FieldSerializer
-import org.gradle.internal.impldep.org.h2.engine.Right
-import org.jetbrains.kotlin.cfg.getElementParentDeclaration
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.js.descriptorUtils.getKotlinTypeFqName
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtSimpleNameExpression
-import org.jetbrains.kotlin.psi.psiUtil.isContextualDeclaration
 import org.jetbrains.kotlin.resolve.BindingContext
-import org.jetbrains.kotlin.resolve.calls.util.getType
-import org.jetbrains.kotlin.com.intellij.psi.PsiElement
-import org.jetbrains.kotlin.descriptors.impl.referencedProperty
-import org.jetbrains.kotlin.gradle.utils.loadPropertyFromResources
+import org.jetbrains.kotlin.idea.references.KtReference
+import org.jetbrains.kotlin.idea.references.KtSimpleNameReference
 import org.jetbrains.kotlin.load.kotlin.toSourceElement
 import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtProperty
-import org.jetbrains.kotlin.psi.declarationRecursiveVisitor
+import org.jetbrains.kotlin.psi.KtVariableDeclaration
 import org.jetbrains.kotlin.resolve.source.getPsi
-import javax.naming.Binding
 
 
 internal class VectorReplacementProcessor(private val context: BindingContext, val primitive: Primitive<*, *>) {
@@ -32,7 +24,7 @@ internal class VectorReplacementProcessor(private val context: BindingContext, v
 
     companion object {
         val unaryLinearReplacements = mapOf(
-            "EXP" to { x: String -> "exp($x)" },
+            "EXP" to { x: String -> "FastMath.exp($x)" },
             "ABS" to { x: String -> "abs($x)" },
             "NEG" to { x: String -> "(-$x)" },
             "LOG" to { x: String -> "ln($x)" },
@@ -70,16 +62,7 @@ internal class VectorReplacementProcessor(private val context: BindingContext, v
         ).withDefault { null }
 
         val maskHandles = mapOf(
-            "And" to "AND",
-            "Or" to "OR",
-            "Xor" to "XOR",
-            "Not" to "NOT",
-            "Eq" to "EQ",
-            "Neq" to "NEQ",
-            "LT" to "LT",
-            "LE" to "LE",
-            "GT" to "GT",
-            "GE" to "GE"
+            "And" to "AND", "Or" to "OR", "Xor" to "XOR", "Not" to "NOT", "Eq" to "EQ", "Neq" to "NEQ", "LT" to "LT", "LE" to "LE", "GT" to "GT", "GE" to "GE"
         ).withDefault { null }
 
         val maskUnaryReplacement = mapOf(
@@ -128,12 +111,13 @@ internal class VectorReplacementProcessor(private val context: BindingContext, v
     var localVariables: Set<String> = emptySet()
 
     fun processDeclaration(expr: KtExpression, collector: MessageCollector): Triple<String, String, Boolean>? {
-        expr as? KtSimpleNameExpression ?: return null // Triple("NOT SIMPLE: ${expr.text}", "a", false)
+        if (expr !is KtSimpleNameExpression) return null
         val varName = expr.text
+
         val descriptor = context.get(BindingContext.REFERENCE_TARGET, expr) ?: return null //Triple("NOT_DECL: ${expr.text}", "NOT_DECL", false)
         val declaration = descriptor.toSourceElement.getPsi() ?: return null //Triple("NOT_DECL_PSI: ${expr.text}", "NOT_DECL", false)
-        declaration as? KtDeclaration ?: return null //Triple("NOT_DECL_EXPR: ${expr.text}", "NOT_DECL", false)
-        declaration as? KtProperty ?: return null // Triple("NOT_DECL_PROPERTY: ${expr.text}", "NOT_DECL", false)
+
+        if (declaration !is KtVariableDeclaration) return null
         val actualBody = declaration.initializer ?: return null //Triple("NOT_DECL_BODY: ${expr.text}", "NOT_DECL", false)
         //return Triple("BODY: ${actualBody.text}", "", false)
         val (vecReplacement, linReplacement, value) = process(actualBody, collector) ?: return null
@@ -193,11 +177,9 @@ internal class VectorReplacementProcessor(private val context: BindingContext, v
                 var isValue = leftValue && rightValue
                 var linear = binaryLinearReplacements[handle]?.invoke(leftLinear, rightLinear) ?: return null
 
-                var vectorized = if (rightValue)
-                    """$leftVector.
+                var vectorized = if (rightValue) """$leftVector.
                         lanewise(VectorOperators.$handle, $rightLinear""".trimIndent()
-                else
-                    """$leftVector
+                else """$leftVector
                     .lanewise(VectorOperators.$handle, $rightVector""".trimIndent()
 
                 if (masked) {
@@ -210,9 +192,7 @@ internal class VectorReplacementProcessor(private val context: BindingContext, v
                     vectorized += ")"
                 }
                 Triple(
-                    vectorized,
-                    linear,
-                    isValue
+                    vectorized, linear, isValue
                 )
             }
 
@@ -231,9 +211,7 @@ internal class VectorReplacementProcessor(private val context: BindingContext, v
                     else -> "0"
                 }
                 Triple(
-                    "${vecName}.fromArray($vecSpecies, $src, $offset + _vec_internal_idx)",
-                    "$src[$offset + _vec_internal_idx]",
-                    false
+                    "${vecName}.fromArray($vecSpecies, $src, $offset + _vec_internal_idx)", "$src[$offset + _vec_internal_idx]", false
                 )
             }
 
@@ -272,8 +250,7 @@ internal class VectorReplacementProcessor(private val context: BindingContext, v
                 val linReplacer = maskUnaryReplacement[handle] ?: return null
 
                 Pair(
-                    linReplacer(vecReplacement),
-                    linReplacer(linReplacement)
+                    linReplacer(vecReplacement), linReplacer(linReplacement)
                 )
             }
 
@@ -286,8 +263,7 @@ internal class VectorReplacementProcessor(private val context: BindingContext, v
                 val handle = maskHandles[shortName] ?: return null
                 val linReplacer = maskBinaryReplacement[handle] ?: return null
                 Pair(
-                    linReplacer(leftVecReplacement, rightVecReplacement),
-                    linReplacer(leftLinReplacement, rightLinReplacement)
+                    linReplacer(leftVecReplacement, rightVecReplacement), linReplacer(leftLinReplacement, rightLinReplacement)
                 )
             }
 

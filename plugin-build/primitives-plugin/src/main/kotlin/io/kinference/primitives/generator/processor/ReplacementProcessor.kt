@@ -22,7 +22,11 @@ import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
 import org.jetbrains.kotlin.types.typeUtil.supertypes
 
-internal class ReplacementProcessor(private val context: BindingContext, private val collector: MessageCollector) {
+internal class ReplacementProcessor(
+    private val context: BindingContext,
+    private val collector: MessageCollector,
+    private val vectorize: Boolean = false
+) {
     companion object {
         internal fun toType(primitive: Primitive<*, *>): String {
             return when (primitive.dataType) {
@@ -116,29 +120,38 @@ internal class ReplacementProcessor(private val context: BindingContext, private
         val vecLen = "_vecLen_$idx"
         val vecEnd = "_vecEnd_$idx"
         val vecIdx = "_vec_internal_idx"
+        val vecEnabled = "isModuleLoaded"
 
         if (callName == "into" && args.size == 3) {
             val dest = args[0].text
             val destOffset = args[1].text
             val len = args[2].text
 
-            if (primitive.dataType in DataType.VECTORIZABLE.resolve() && !isValue)
+            if (primitive.dataType in DataType.VECTORIZABLE.resolve() && vectorize)
                 return """
-                val $vecLen = ${vecProcessor.vecSpecies}.length()
-                val $vecEnd = $len - ($len % $vecLen)
-                ${vecProcessor.valueDeclarations}
-                for ($vecIdx in 0 until $vecEnd step $vecLen) {
-                    ${vecProcessor.vecDeclarations}
-                    $vecReplacement.intoArray($dest, $destOffset + _vec_internal_idx)
-                }
-                for($vecIdx in $vecEnd until $len) {
-                    ${vecProcessor.linDeclarations}
-                    $dest[$destOffset + $vecIdx] = $linReplacement.$toPrimitive
-                }
+                if($vecEnabled) {
+                    val $vecLen = ${vecProcessor.vecSpecies}.length()
+                    val $vecEnd = $len - ($len % $vecLen)
+                    ${vecProcessor.valueDeclarations}
+                    for ($vecIdx in 0 until $vecEnd step $vecLen) {
+                        ${vecProcessor.vecDeclarations}
+                        $vecReplacement.intoArray($dest, $destOffset + _vec_internal_idx)
+                    }
+                    for($vecIdx in $vecEnd until $len) {
+                        ${vecProcessor.linDeclarations}
+                        $dest[$destOffset + $vecIdx] = $linReplacement.$toPrimitive
+                    }
+                }else{
+                    for($vecIdx in 0 until $len) {
+                        ${vecProcessor.linDeclarations}
+                        $dest[$destOffset + $vecIdx] = $linReplacement.$toPrimitive
+                    } 
+               }
                 """.trimIndent()
             else
                 return """
                 for($vecIdx in 0 until $len) {
+                    ${vecProcessor.linDeclarations}
                     $dest[$destOffset + $vecIdx] = $linReplacement.$toPrimitive
                }""".trimIndent()
         } else if (callName == "reduce" && args.size == 2) {
@@ -151,25 +164,37 @@ internal class ReplacementProcessor(private val context: BindingContext, private
             val linearOp = VectorReplacementProcessor.binaryLinearReplacements[handle] ?: return ""
             val linAccumulate = linearOp("ret", linReplacement)
 
-            if (primitive.dataType in DataType.VECTORIZABLE.resolve()) {
+            if (primitive.dataType in DataType.VECTORIZABLE.resolve() && vectorize) {
                 return """{
-                    val $vecLen = ${vecProcessor.vecSpecies}.length()
-                    val $vecEnd = $len - ($len % $vecLen)
-                    var accumulator = ${vecProcessor.vecName}.broadcast(${vecProcessor.vecSpecies}, $neutral)
-                    for ($vecIdx in 0 until $vecEnd step $vecLen) {
-                        accumulator = accumulator.lanewise(VectorOperators.$handle, $vecReplacement)
-                    }
-                    var ret = accumulator.reduceLanes(VectorOperators.$handle)
-                    for($vecIdx in $vecEnd until $len) {
-                        ret = $linAccumulate.$toPrimitive
-                    }
-                    ret.$toPrimitive
+                    if($vecEnabled) {
+                        val $vecLen = ${vecProcessor.vecSpecies}.length()
+                        val $vecEnd = $len - ($len % $vecLen)
+                        var accumulator = ${vecProcessor.vecName}.broadcast(${vecProcessor.vecSpecies}, $neutral)
+                        ${vecProcessor.valueDeclarations}
+                        for ($vecIdx in 0 until $vecEnd step $vecLen) {
+                            ${vecProcessor.vecDeclarations}
+                            accumulator = accumulator.lanewise(VectorOperators.$handle, $vecReplacement)
+                        }
+                        var ret = accumulator.reduceLanes(VectorOperators.$handle)
+                        for($vecIdx in $vecEnd until $len) {
+                            ${vecProcessor.linDeclarations}
+                            ret = $linAccumulate.$toPrimitive
+                        }
+                        ret.$toPrimitive
+                    }else{
+                        var ret = $neutral
+                        for($vecIdx in 0 until $len) {
+                            ${vecProcessor.linDeclarations}
+                            ret = $linAccumulate.$toPrimitive
+                        }
+                    ret.$toPrimitive}
                 }.invoke()
                 """.trimIndent()
             } else {
                 return """{
                     var ret = $neutral
                     for($vecIdx in 0 until $len) {
+                        ${vecProcessor.linDeclarations}
                         ret = $linAccumulate.$toPrimitive
                     }
                     ret.$toPrimitive

@@ -19,6 +19,9 @@ import org.jetbrains.kotlin.gradle.plugin.*
 import java.io.File
 
 abstract class PrimitivesTask : DefaultTask() {
+    @get:Input
+    abstract val vectorize: Property<Boolean>
+
     @get:Internal
     abstract val generationPath: DirectoryProperty
 
@@ -41,6 +44,7 @@ abstract class PrimitivesTask : DefaultTask() {
     init {
         group = "generate"
         description = "Generates primitives from sources"
+        vectorize.convention(false)
     }
 
     @TaskAction
@@ -89,7 +93,7 @@ abstract class PrimitivesTask : DefaultTask() {
             val sourceSet = findSourceSetName(ktFile.virtualFilePath)
             val outputDir = generationPath.dir(sourceSet).get().asFile
 
-            PrimitiveGenerator(ktFile, result.bindingContext, outputDir, MessageCollector.NONE).generate()
+            PrimitiveGenerator(ktFile, result.bindingContext, outputDir, MessageCollector.NONE, vectorize.get()).generate()
 
             primitivesCache.get().resolvedPaths.add(ktFile.virtualFilePath)
         }

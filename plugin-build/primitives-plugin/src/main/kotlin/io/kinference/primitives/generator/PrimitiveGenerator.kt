@@ -19,12 +19,13 @@ import org.jetbrains.kotlin.psi.psiUtil.visibilityModifier
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.types.typeUtil.supertypes
 import java.io.File
-import java.util.Vector
-import kotlin.io.path.Path
 
 internal class PrimitiveGenerator(
-    private val file: KtFile, private val context: BindingContext, private val output: File,
-    private val collector: MessageCollector
+    private val file: KtFile,
+    private val context: BindingContext,
+    private val output: File,
+    private val collector: MessageCollector,
+    private val vectorize: Boolean = false
 ) {
 
     private data class PrimitiveContext(val type1: Primitive<*, *>? = null, val type2: Primitive<*, *>? = null, val type3: Primitive<*, *>? = null)
@@ -43,7 +44,7 @@ internal class PrimitiveGenerator(
             val builder = StringBuilder()
 
             val removalProcessor = RemovalProcessor(context)
-            val replacementProcessor = ReplacementProcessor(context, collector)
+            val replacementProcessor = ReplacementProcessor(context, collector, vectorize)
 
             file.accept(object : KtDefaultVisitor() {
                 private var currentPrimitive = primitive
@@ -69,7 +70,8 @@ internal class PrimitiveGenerator(
                 }
 
                 override fun visitImportList(importList: KtImportList) {
-                    if (file.isAnnotatedWith<GenerateVector>(context) && primitive.dataType in DataType.VECTORIZABLE.resolve())
+                    if (file.isAnnotatedWith<GenerateVector>(context) && primitive.dataType in DataType.VECTORIZABLE.resolve() && vectorize)
+                        builder.appendLine("import io.kinference.ndarray.VecUtils.isModuleLoaded")
                         builder.appendLine("import jdk.incubator.vector.*")
                     super.visitImportList(importList)
                 }
