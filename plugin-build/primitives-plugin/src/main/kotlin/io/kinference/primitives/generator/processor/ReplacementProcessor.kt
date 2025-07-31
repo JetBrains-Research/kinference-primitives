@@ -25,7 +25,8 @@ import org.jetbrains.kotlin.types.typeUtil.supertypes
 internal class ReplacementProcessor(
     private val context: BindingContext,
     private val collector: MessageCollector,
-    private val vectorize: Boolean = false
+    private val file: KtFile,
+    private val vectorize: Boolean = true
 ) {
     companion object {
         internal fun toType(primitive: Primitive<*, *>): String {
@@ -111,7 +112,7 @@ internal class ReplacementProcessor(
 
         if (!isVectorClass(receiver, context)) return null
 
-        val vecProcessor = VectorReplacementProcessor(context, primitive, collector)
+        val vecProcessor = VectorReplacementProcessor(context, primitive, collector, file)
         val (vecReplacement, linReplacement, isScalar) = vecProcessor.process(receiver) ?: return null
 
         val toPrimitive = "${toType(primitive)}()"

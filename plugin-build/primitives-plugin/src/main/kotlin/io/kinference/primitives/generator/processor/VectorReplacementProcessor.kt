@@ -1,54 +1,26 @@
 package io.kinference.primitives.generator.processor
 
-import io.kinference.primitives.annotations.BindPrimitives
-import io.kinference.primitives.annotations.GenerateVector
-import io.kinference.primitives.annotations.SpecifyPrimitives
 import io.kinference.primitives.generator.Primitive
-import io.kinference.primitives.generator.PrimitiveGenerator.PrimitiveContext
-import io.kinference.primitives.generator.errors.require
-import io.kinference.primitives.generator.getExcludes
-import io.kinference.primitives.generator.getIncludes
-import io.kinference.primitives.generator.getTypes
-import io.kinference.primitives.generator.isVectorClass
-import io.kinference.primitives.generator.toPrimitive
-import io.kinference.primitives.types.DataType
-import io.kinference.primitives.utils.crossProduct
-import io.kinference.primitives.utils.psi.KtDefaultVisitor
-import io.kinference.primitives.utils.psi.isAnnotatedWith
-import io.kinference.primitives.utils.psi.isAnnotation
 import io.kinference.primitives.vector.*
-import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
-import org.jetbrains.kotlin.com.intellij.psi.PsiWhiteSpace
-import org.jetbrains.kotlin.com.intellij.psi.impl.source.tree.LeafPsiElement
 import org.jetbrains.kotlin.js.descriptorUtils.getKotlinTypeFqName
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtSimpleNameExpression
 import org.jetbrains.kotlin.resolve.BindingContext
-import org.jetbrains.kotlin.idea.references.KtReference
-import org.jetbrains.kotlin.idea.references.KtSimpleNameReference
-import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.load.kotlin.toSourceElement
-import org.jetbrains.kotlin.psi.KtAnnotatedExpression
-import org.jetbrains.kotlin.psi.KtAnnotationEntry
-import org.jetbrains.kotlin.psi.KtClass
-import org.jetbrains.kotlin.psi.KtClassOrObject
-import org.jetbrains.kotlin.psi.KtDeclaration
-import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtElement
-import org.jetbrains.kotlin.psi.KtImportDirective
-import org.jetbrains.kotlin.psi.KtImportList
-import org.jetbrains.kotlin.psi.KtModifierList
-import org.jetbrains.kotlin.psi.KtNamedFunction
-import org.jetbrains.kotlin.psi.KtProperty
-import org.jetbrains.kotlin.psi.KtTypeReference
+import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtVariableDeclaration
-import org.jetbrains.kotlin.psi.psiUtil.visibilityModifier
 import org.jetbrains.kotlin.resolve.source.getPsi
 
 
-internal class VectorReplacementProcessor(private val context: BindingContext, val primitive: Primitive<*, *>, val collector: MessageCollector) {
+internal class VectorReplacementProcessor(
+    private val context: BindingContext,
+    private val primitive: Primitive<*, *>,
+    private val collector: MessageCollector,
+    private val file: KtFile,
+) {
     val vecName = "${primitive.typeName}Vector"
     val vecSpecies = "$vecName.SPECIES_PREFERRED"
     val vecLen = "$vecName.length()"
@@ -227,7 +199,9 @@ internal class VectorReplacementProcessor(private val context: BindingContext, v
 
             scalarType -> {
                 if (args.size != 1) return null
-                val linear = replaceLeaves(args[0].getArgumentExpression()?: return null)
+                val visitor = GenerationVisitor(primitive, context, collector, file)
+                args[0].accept(visitor)
+                val linear = visitor.text()
                 val vectorized = "$vecName.broadcast($vecSpecies, $linear)"
                 Triple(vectorized, linear, true)
             }
@@ -316,55 +290,4 @@ internal class VectorReplacementProcessor(private val context: BindingContext, v
         }
     }
 
-    private fun replaceLeaves(expr: KtExpression): String {
-        val builder = StringBuilder()
-        expr.accept(object : KtDefaultVisitor() {
-            val replacementProcessor = ReplacementProcessor(context, collector)
-            private var currentPrimitive = primitive
-
-            private fun KtElement.withPrimitive(primitive: Primitive<*, *>?, body: () -> Unit) {
-                collector.require(CompilerMessageSeverity.ERROR, this, primitive != null) {
-                    "Primitive was bound with @${BindPrimitives::class.simpleName} sub-annotation," +
-                        " but outer expression is not annotated with @${BindPrimitives::class.simpleName}"
-                }
-
-                val tmp = currentPrimitive
-                currentPrimitive = primitive
-                body()
-                currentPrimitive = tmp
-            }
-            override fun visitClass(klass: KtClass) {
-                if (primitive.dataType in klass.getExcludes(context)) return
-                if (klass.isAnnotatedWith<SpecifyPrimitives>(context) && primitive.dataType !in klass.getIncludes(context)!!) return
-
-                super.visitClass(klass)
-            }
-
-            override fun visitLeafElement(element: LeafPsiElement) {
-                if (replacementProcessor.haveReplaceText(element)) {
-                    builder.append(replacementProcessor.getReplacement(element))
-                    return
-                }
-
-                if (element.elementType != KtTokens.IDENTIFIER) {
-                    builder.append(element.text)
-                    return
-                }
-
-                when (val parent = element.parent) {
-                    is KtClassOrObject -> builder.append(replacementProcessor.getReplacement(parent, currentPrimitive) ?: element.text)
-                    is KtNamedFunction -> builder.append(replacementProcessor.getReplacement(parent, currentPrimitive) ?: element.text)
-                    else -> builder.append(element.text)
-                }
-            }
-
-
-            override fun visitSimpleNameExpression(expression: KtSimpleNameExpression) {
-                val replacement = replacementProcessor.getReplacement(expression, currentPrimitive)
-                builder.append(replacement ?: expression.text)
-            }
-
-        })
-        return builder.toString()
-    }
 }
