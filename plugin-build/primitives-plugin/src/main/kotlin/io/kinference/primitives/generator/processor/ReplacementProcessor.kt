@@ -23,10 +23,7 @@ import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
 import org.jetbrains.kotlin.types.typeUtil.supertypes
 
 internal class ReplacementProcessor(
-    private val context: BindingContext,
-    private val collector: MessageCollector,
-    private val file: KtFile,
-    private val vectorize: Boolean = true
+    private val context: BindingContext, private val collector: MessageCollector, private val file: KtFile, private val vectorize: Boolean = true
 ) {
     companion object {
         internal fun toType(primitive: Primitive<*, *>): String {
@@ -51,8 +48,7 @@ internal class ReplacementProcessor(
 
             (PrimitiveArray::class.qualifiedName!!) to { it.arrayTypeName },
             (PrimitiveArray::class.qualifiedName!! + ".<init>") to { it.arrayTypeName },
-            (PrimitiveArray::class.qualifiedName!! + ".Companion") to { it.arrayTypeName }
-        )
+            (PrimitiveArray::class.qualifiedName!! + ".Companion") to { it.arrayTypeName })
 
     }
 
@@ -89,8 +85,7 @@ internal class ReplacementProcessor(
                 defaultReplacements[type]!!.invoke(primitive)
             }
 
-            (target.isKtClassOrObject() && target.containingDeclaration!!.isAnnotatedWith<GenerateNameFromPrimitives>()) ||
-                (target.isNamedFunction() || target.isKtClassOrObject()) && target.isAnnotatedWith<GenerateNameFromPrimitives>() -> {
+            (target.isKtClassOrObject() && target.containingDeclaration!!.isAnnotatedWith<GenerateNameFromPrimitives>()) || (target.isNamedFunction() || target.isKtClassOrObject()) && target.isAnnotatedWith<GenerateNameFromPrimitives>() -> {
                 expression.text.specialize(primitive)
             }
 
@@ -126,8 +121,7 @@ internal class ReplacementProcessor(
             val destOffset = args[1].text
             val len = args[2].text
 
-            if (primitive.dataType in DataType.VECTORIZABLE.resolve() && vectorize)
-                return """
+            if (primitive.dataType in DataType.VECTORIZABLE.resolve() && vectorize) return """
                 if($vecEnabled) {
                     val $vecLen = ${vecProcessor.vecSpecies}.length()
                     val $vecEnd = $len - ($len % $vecLen)
@@ -147,8 +141,7 @@ internal class ReplacementProcessor(
                     } 
                }
                 """.trimIndent()
-            else
-                return """
+            else return """
                 for($vecIdx in 0 until $len) {
                     ${vecProcessor.linDeclarations}
                     $dest[$destOffset + $vecIdx] = $linReplacement.$toPrimitive

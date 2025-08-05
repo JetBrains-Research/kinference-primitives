@@ -5,16 +5,12 @@ import io.kinference.primitives.generator.fqTypename
 import io.kinference.primitives.generator.initializer
 import io.kinference.primitives.vector.*
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
-import org.jetbrains.kotlin.js.descriptorUtils.getKotlinTypeFqName
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtSimpleNameExpression
 import org.jetbrains.kotlin.resolve.BindingContext
-import org.jetbrains.kotlin.load.kotlin.toSourceElement
-import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.psi.KtVariableDeclaration
-import org.jetbrains.kotlin.resolve.source.getPsi
+import org.jetbrains.kotlin.psi.KtValueArgument
 
 
 internal class VectorReplacementProcessor(
@@ -47,7 +43,7 @@ internal class VectorReplacementProcessor(
             "POW" to { x: String, y: String -> "($x).pow($y)" },
         ).withDefault { null }
 
-        val isAssoc = mapOf<String, Boolean>(
+        val isAssoc = mapOf(
             "ADD" to true,
             "MUL" to true,
             "MIN" to true,
@@ -135,65 +131,24 @@ internal class VectorReplacementProcessor(
         return Triple("${varName}_vec", "${varName}_lin", scalar)
     }
 
-
     fun process(expr: KtExpression?): Triple<String, String, Boolean>? {
         if (expr !is KtCallExpression) {
             return processDeclaration(expr)
         }
+
         val exprTypename = expr.fqTypename(context) ?: return null
         val shortName = exprTypename.substringAfterLast('.')
         val args = expr.valueArguments
+
         return when (exprTypename) {
             in unaryOpNames -> {
-                if (args.size != 1 && args.size != 2) return null
-                val childExpr = args[0].getArgumentExpression()
-                val masked = args.size == 2
-                var (childVector, childLinear, isScalar) = process(childExpr) ?: return null
                 val handle = vectorHandles[shortName] ?: return null
-                val linReplace = unaryLinearReplacements[handle] ?: return null
-                var linear = linReplace(childLinear)
-                var vectorized = """$childVector
-                        .lanewise(VectorOperators.$handle""".trimIndent()
-                if (masked) {
-                    isScalar = false
-                    val maskExpr = args[1].getArgumentExpression()
-                    val (maskVector, maskLinear) = processMask(maskExpr) ?: return null
-                    linear = "(if($maskLinear) $linear else $childLinear)"
-                    vectorized += ", $maskVector)"
-                } else {
-                    vectorized += ")"
-                }
-                Triple(vectorized, linear, isScalar)
+                processUnaryOperation(handle, args)
             }
 
             in binaryOpNames -> {
-                if (args.size != 2 && args.size != 3) return null
-                val masked = args.size == 3
-                val leftExpr = args[0].getArgumentExpression()
-                val rightExpr = args[1].getArgumentExpression()
                 val handle = vectorHandles[shortName] ?: return null
-                val (leftVector, leftLinear, leftScalar) = process(leftExpr) ?: return null
-                val (rightVector, rightLinear, rightScalar) = process(rightExpr) ?: return null
-                var isScalar = leftScalar && rightScalar
-                var linear = binaryLinearReplacements[handle]?.invoke(leftLinear, rightLinear) ?: return null
-
-                var vectorized = if (rightScalar) """$leftVector.
-                            lanewise(VectorOperators.$handle, $rightLinear""".trimIndent()
-                else """$leftVector
-                        .lanewise(VectorOperators.$handle, $rightVector""".trimIndent()
-
-                if (masked) {
-                    isScalar = false
-                    val maskExpr = args[2].getArgumentExpression()
-                    val (maskVector, maskLinear) = processMask(maskExpr) ?: return null
-                    linear = "(if($maskLinear) $linear else $leftLinear)"
-                    vectorized += ", $maskVector)"
-                } else {
-                    vectorized += ")"
-                }
-                Triple(
-                    vectorized, linear, isScalar
-                )
+                processBinaryOperation(handle, args)
             }
 
             scalarType -> {
@@ -217,38 +172,85 @@ internal class VectorReplacementProcessor(
                 )
             }
 
-            ifElseType -> {
-                if (args.size != 3) return null
-                val mask = args[0].getArgumentExpression() ?: return null
-                val left = args[1].getArgumentExpression() ?: return null
-                val right = args[2].getArgumentExpression() ?: return null
-                val (maskVector, maskLinear) = processMask(mask) ?: return null
-                val (leftVector, leftLinear, leftScalar) = process(left) ?: return null
-                val (rightVector, rightLinear, rightScalar) = process(right) ?: return null
-                val isScalar = leftScalar && rightScalar
-                val linear = "(if($maskLinear) $leftLinear else $rightLinear)"
-                val vectorized = """
-                        $rightVector.blend($leftVector, $maskVector)""".trimIndent()
-                Triple(vectorized, linear, isScalar)
-            }
-
-            else -> {
-                null
-            }
+            ifElseType -> processIfElse(args)
+            else -> null
         }
     }
+
+    fun processUnaryOperation(handle: String, args: List<KtValueArgument>): Triple<String, String, Boolean>? {
+        if (args.size != 1 && args.size != 2) return null
+        val childExpr = args[0].getArgumentExpression()
+        val masked = args.size == 2
+        var (childVector, childLinear, isScalar) = process(childExpr) ?: return null
+        val linReplace = unaryLinearReplacements[handle] ?: return null
+        var linear = linReplace(childLinear)
+        var vectorized = """$childVector
+                        .lanewise(VectorOperators.$handle""".trimIndent()
+        if (masked) {
+            isScalar = false
+            val maskExpr = args[1].getArgumentExpression()
+            val (maskVector, maskLinear) = processMask(maskExpr) ?: return null
+            linear = "(if($maskLinear) $linear else $childLinear)"
+            vectorized += ", $maskVector)"
+        } else {
+            vectorized += ")"
+        }
+        return Triple(vectorized, linear, isScalar)
+    }
+
+    fun processBinaryOperation(handle: String, args: List<KtValueArgument>): Triple<String, String, Boolean>? {
+        if (args.size != 2 && args.size != 3) return null
+        val masked = args.size == 3
+        val leftExpr = args[0].getArgumentExpression()
+        val rightExpr = args[1].getArgumentExpression()
+        val (leftVector, leftLinear, leftScalar) = process(leftExpr) ?: return null
+        val (rightVector, rightLinear, rightScalar) = process(rightExpr) ?: return null
+        var isScalar = leftScalar && rightScalar
+        var linear = binaryLinearReplacements[handle]?.invoke(leftLinear, rightLinear) ?: return null
+
+        var vectorized = if (rightScalar) """$leftVector.
+                            lanewise(VectorOperators.$handle, $rightLinear""".trimIndent()
+        else """$leftVector
+                        .lanewise(VectorOperators.$handle, $rightVector""".trimIndent()
+
+        if (masked) {
+            isScalar = false
+            val maskExpr = args[2].getArgumentExpression()
+            val (maskVector, maskLinear) = processMask(maskExpr) ?: return null
+            linear = "(if($maskLinear) $linear else $leftLinear)"
+            vectorized += ", $maskVector)"
+        } else {
+            vectorized += ")"
+        }
+        return Triple(vectorized, linear, isScalar)
+    }
+
+    fun processIfElse(args: List<KtValueArgument>): Triple<String, String, Boolean>? {
+        if (args.size != 3) return null
+        val mask = args[0].getArgumentExpression() ?: return null
+        val left = args[1].getArgumentExpression() ?: return null
+        val right = args[2].getArgumentExpression() ?: return null
+        val (maskVector, maskLinear) = processMask(mask) ?: return null
+        val (leftVector, leftLinear, leftScalar) = process(left) ?: return null
+        val (rightVector, rightLinear, rightScalar) = process(right) ?: return null
+        val isScalar = leftScalar && rightScalar
+        val linear = "(if($maskLinear) $leftLinear else $rightLinear)"
+        val vectorized = """
+                        $rightVector.blend($leftVector, $maskVector)""".trimIndent()
+        return Triple(vectorized, linear, isScalar)
+    }
+
 
     fun processMask(expr: KtExpression?): Pair<String, String>? {
         if (expr !is KtCallExpression) return null
         val exprTypename = expr.fqTypename(context) ?: return null
-        val shortName = exprTypename.substringAfterLast('.')
+        val handle = maskHandles[exprTypename.substringAfterLast('.')] ?: return null
         val args = expr.valueArguments
         return when {
             exprTypename in maskUnaryOpTypes -> {
                 if (args.size != 1) return null
                 val child = args[0].getArgumentExpression() ?: return null
                 val (vecReplacement, linReplacement) = processMask(child) ?: return null
-                val handle = maskHandles[shortName] ?: return null
                 val linReplacer = maskUnaryReplacement[handle] ?: return null
 
                 Pair(
@@ -262,7 +264,6 @@ internal class VectorReplacementProcessor(
                 val (leftVecReplacement, leftLinReplacement) = processMask(left) ?: return null
                 val right = args[0].getArgumentExpression() ?: return null
                 val (rightVecReplacement, rightLinReplacement) = processMask(right) ?: return null
-                val handle = maskHandles[shortName] ?: return null
                 val linReplacer = maskBinaryReplacement[handle] ?: return null
                 Pair(
                     linReplacer(leftVecReplacement, rightVecReplacement), linReplacer(leftLinReplacement, rightLinReplacement)
@@ -273,10 +274,8 @@ internal class VectorReplacementProcessor(
                 if (args.size != 2) return null
                 val leftExpr = args[0].getArgumentExpression() ?: return null
                 val rightExpr = args[1].getArgumentExpression() ?: return null
-                val handle = maskHandles[shortName] ?: return null
                 val (leftVector, leftLinear, leftScalar) = process(leftExpr) ?: return null
                 val (rightVector, rightLinear, rightScalar) = process(rightExpr) ?: return null
-                val isScalar = leftScalar && rightScalar
                 val linear = comparatorReplacement[handle]?.invoke(leftLinear, rightLinear) ?: return null
                 val vectorized = """
                     $leftVector
