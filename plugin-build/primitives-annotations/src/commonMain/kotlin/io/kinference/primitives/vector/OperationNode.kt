@@ -33,63 +33,81 @@ sealed class BinaryOp(val left: OpNode, val right: OpNode) : OpNode() {
 
 class IfElse(val condition: VecMask, val left: OpNode, val right: OpNode) : OpNode() {}
 
-sealed class AssociativeWrapper(){}
+sealed class AssociativeWrapper() {}
 
-class Exp(arg: OpNode): UnaryOp(arg){
-    constructor(arg: OpNode, mask: VecMask) : this(arg)
-}
-class Abs(arg: OpNode): UnaryOp(arg){
-    constructor(arg: OpNode, mask: VecMask) : this(arg)
-}
-class Neg(arg: OpNode): UnaryOp(arg){
-    constructor(arg: OpNode, mask: VecMask) : this(arg)
-}
-class Log(arg: OpNode): UnaryOp(arg){
+class Exp(arg: OpNode) : UnaryOp(arg) {
     constructor(arg: OpNode, mask: VecMask) : this(arg)
 }
 
-class Add(left: OpNode, right: OpNode): BinaryOp(left, right){
-    constructor(left: OpNode, right: OpNode, mask: VecMask) : this(left, right)
+class Abs(arg: OpNode) : UnaryOp(arg) {
+    constructor(arg: OpNode, mask: VecMask) : this(arg)
 }
-class Sub(left: OpNode, right: OpNode): BinaryOp(left, right){
-    constructor(left: OpNode, right: OpNode, mask: VecMask) : this(left, right)
+
+class Neg(arg: OpNode) : UnaryOp(arg) {
+    constructor(arg: OpNode, mask: VecMask) : this(arg)
 }
-class Mul(left: OpNode, right: OpNode): BinaryOp(left, right){
-    constructor(left: OpNode, right: OpNode, mask: VecMask) : this(left, right)
+
+class Log(arg: OpNode) : UnaryOp(arg) {
+    constructor(arg: OpNode, mask: VecMask) : this(arg)
 }
-class Div(left: OpNode, right: OpNode): BinaryOp(left, right){
-    constructor(left: OpNode, right: OpNode, mask: VecMask) : this(left, right)
+
+class Sqrt(arg: OpNode) : UnaryOp(arg) {
+    constructor(arg: OpNode, mask: VecMask) : this(arg)
 }
-class Pow(left: OpNode, right: OpNode): BinaryOp(left, right){
-    constructor(left: OpNode, right: OpNode, mask: VecMask) : this(left, right)
+
+class Cbrt(arg: OpNode) : UnaryOp(arg) {
+    constructor(arg: OpNode, mask: VecMask) : this(arg)
 }
-class Max(left: OpNode, right: OpNode): BinaryOp(left, right){
-    constructor(left: OpNode, right: OpNode, mask: VecMask) : this(left, right)
-}
-class Min(left: OpNode, right: OpNode): BinaryOp(left, right){
+
+class Add(left: OpNode, right: OpNode) : BinaryOp(left, right) {
     constructor(left: OpNode, right: OpNode, mask: VecMask) : this(left, right)
 }
 
-object ADD: AssociativeWrapper(){}
-object MUL: AssociativeWrapper(){}
-object MAX: AssociativeWrapper(){}
-object MIN: AssociativeWrapper(){}
+class Sub(left: OpNode, right: OpNode) : BinaryOp(left, right) {
+    constructor(left: OpNode, right: OpNode, mask: VecMask) : this(left, right)
+}
 
-sealed class VecMask(){}
+class Mul(left: OpNode, right: OpNode) : BinaryOp(left, right) {
+    constructor(left: OpNode, right: OpNode, mask: VecMask) : this(left, right)
+}
 
-sealed class Comparator(left: OpNode, right: OpNode): VecMask(){}
-sealed class MaskBinaryOp(left: VecMask, right: VecMask): VecMask(){}
-sealed class MaskUnaryOp(arg: VecMask): VecMask(){}
+class Div(left: OpNode, right: OpNode) : BinaryOp(left, right) {
+    constructor(left: OpNode, right: OpNode, mask: VecMask) : this(left, right)
+}
 
-class Not(arg: VecMask): VecMask(){}
+class Pow(left: OpNode, right: OpNode) : BinaryOp(left, right) {
+    constructor(left: OpNode, right: OpNode, mask: VecMask) : this(left, right)
+}
 
-class Eq(left: OpNode, right: OpNode): Comparator(left, right){}
-class Neq(left: OpNode, right: OpNode): Comparator(left, right){}
-class LT(left: OpNode, right: OpNode): Comparator(left, right){}
-class LE(left: OpNode, right: OpNode): Comparator(left, right){}
-class GT(left: OpNode, right: OpNode): Comparator(left, right){}
-class GE(left: OpNode, right: OpNode): Comparator(left, right){}
+class Max(left: OpNode, right: OpNode) : BinaryOp(left, right) {
+    constructor(left: OpNode, right: OpNode, mask: VecMask) : this(left, right)
+}
 
-class And(left: VecMask, right: VecMask): MaskBinaryOp(left, right){}
-class Or(left: VecMask, right: VecMask): MaskBinaryOp(left, right){}
-class Xor(left: VecMask, right: VecMask): MaskBinaryOp(left, right){}
+class Min(left: OpNode, right: OpNode) : BinaryOp(left, right) {
+    constructor(left: OpNode, right: OpNode, mask: VecMask) : this(left, right)
+}
+
+
+object ADD : AssociativeWrapper() {}
+object MUL : AssociativeWrapper() {}
+object MAX : AssociativeWrapper() {}
+object MIN : AssociativeWrapper() {}
+
+sealed class VecMask() {}
+
+sealed class Comparator(left: OpNode, right: OpNode) : VecMask() {}
+sealed class MaskBinaryOp(left: VecMask, right: VecMask) : VecMask() {}
+sealed class MaskUnaryOp(arg: VecMask) : VecMask() {}
+
+class Not(arg: VecMask) : VecMask() {}
+
+class Eq(left: OpNode, right: OpNode) : Comparator(left, right) {}
+class Neq(left: OpNode, right: OpNode) : Comparator(left, right) {}
+class LT(left: OpNode, right: OpNode) : Comparator(left, right) {}
+class LE(left: OpNode, right: OpNode) : Comparator(left, right) {}
+class GT(left: OpNode, right: OpNode) : Comparator(left, right) {}
+class GE(left: OpNode, right: OpNode) : Comparator(left, right) {}
+
+class And(left: VecMask, right: VecMask) : MaskBinaryOp(left, right) {}
+class Or(left: VecMask, right: VecMask) : MaskBinaryOp(left, right) {}
+class Xor(left: VecMask, right: VecMask) : MaskBinaryOp(left, right) {}

@@ -11,9 +11,11 @@ import org.jetbrains.kotlin.descriptors.ClassConstructorDescriptor
 import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
 import org.jetbrains.kotlin.js.descriptorUtils.getKotlinTypeFqName
 import org.jetbrains.kotlin.js.resolve.diagnostics.findPsi
+import org.jetbrains.kotlin.load.kotlin.toSourceElement
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.isValueClass
+import org.jetbrains.kotlin.resolve.source.getPsi
 import org.jetbrains.kotlin.types.typeUtil.supertypes
 import kotlin.reflect.KProperty
 
@@ -57,6 +59,15 @@ internal fun DeclarationDescriptor.isKtClassOrObject() = findPsi() is KtClassOrO
 internal fun DeclarationDescriptor.isCompanion() = findPsi() is KtObjectDeclaration && containingDeclaration?.findPsi() is KtClass
 internal fun DeclarationDescriptor.isConstructor() =
     this is ClassConstructorDescriptor || findPsi() is KtConstructor<*> && containingDeclaration?.findPsi() is KtClass
+
+internal fun KtSimpleNameExpression.initializer(context: BindingContext): KtExpression? {
+    val descriptor = context.get(BindingContext.REFERENCE_TARGET, this) ?: return null
+    val declaration = descriptor.toSourceElement.getPsi() ?: return null
+    if (declaration !is KtProperty) return null
+    return declaration.initializer
+}
+
+internal fun KtExpression.fqTypename(context: BindingContext): String? = context.getType(this)?.getKotlinTypeFqName(false)
 
 internal fun KtNamedDeclaration.specialize(primitive: Primitive<*, *>, collector: MessageCollector): String {
     val name = name!!

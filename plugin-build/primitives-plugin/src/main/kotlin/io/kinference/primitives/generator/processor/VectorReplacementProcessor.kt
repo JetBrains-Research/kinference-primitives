@@ -1,6 +1,8 @@
 package io.kinference.primitives.generator.processor
 
 import io.kinference.primitives.generator.Primitive
+import io.kinference.primitives.generator.fqTypename
+import io.kinference.primitives.generator.initializer
 import io.kinference.primitives.vector.*
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.js.descriptorUtils.getKotlinTypeFqName
@@ -31,6 +33,8 @@ internal class VectorReplacementProcessor(
             "ABS" to { x: String -> "abs($x)" },
             "NEG" to { x: String -> "(-$x)" },
             "LOG" to { x: String -> "ln($x)" },
+            "SQRT" to { x: String -> "sqrt($x)" },
+            "CBRT" to { x: String -> "cbrt($x)" },
         ).withDefault { null }
 
         val binaryLinearReplacements = mapOf(
@@ -62,6 +66,8 @@ internal class VectorReplacementProcessor(
             "Log" to "LOG",
             "Neg" to "NEG",
             "Pow" to "POW",
+            "Sqrt" to "SQRT",
+            "Cbrt" to "CBRT",
         ).withDefault { null }
 
         val maskHandles = mapOf(
@@ -110,16 +116,11 @@ internal class VectorReplacementProcessor(
     var linDeclarations: String = ""
     var localVariables: Set<String> = emptySet()
 
-    private fun processDeclaration(expr: KtExpression): Triple<String, String, Boolean>? {
+    private fun processDeclaration(expr: KtExpression?): Triple<String, String, Boolean>? {
         if (expr !is KtSimpleNameExpression) return null
         val varName = expr.text
 
-        val descriptor = context.get(BindingContext.REFERENCE_TARGET, expr) ?: return null //Triple("NOT_DECL: ${expr.text}", "NOT_DECL", false)
-        val declaration = descriptor.toSourceElement.getPsi() ?: return null //Triple("NOT_DECL_PSI: ${expr.text}", "NOT_DECL", false)
-
-        if (declaration !is KtVariableDeclaration) return null
-        val actualBody = declaration.initializer ?: return null //Triple("NOT_DECL_BODY: ${expr.text}", "NOT_DECL", false)
-        //return Triple("BODY: ${actualBody.text}", "", false)
+        val actualBody = expr.initializer(context)
         val (vecReplacement, linReplacement, scalar) = process(actualBody) ?: return null
         if (varName !in localVariables) {
             localVariables = localVariables + varName
@@ -136,12 +137,10 @@ internal class VectorReplacementProcessor(
 
 
     fun process(expr: KtExpression?): Triple<String, String, Boolean>? {
-        if (expr == null) return null
         if (expr !is KtCallExpression) {
             return processDeclaration(expr)
         }
-        val exprType = context.getType(expr) ?: return null
-        val exprTypename = exprType.getKotlinTypeFqName(false)
+        val exprTypename = expr.fqTypename(context) ?: return null
         val shortName = exprTypename.substringAfterLast('.')
         val args = expr.valueArguments
         return when (exprTypename) {
@@ -233,16 +232,16 @@ internal class VectorReplacementProcessor(
                 Triple(vectorized, linear, isScalar)
             }
 
-            else -> null
+            else -> {
+                null
+            }
         }
     }
 
     fun processMask(expr: KtExpression?): Pair<String, String>? {
-        if (expr == null) return null
-        val exprType = context.getType(expr) ?: return null
-        val exprTypename = exprType.getKotlinTypeFqName(false)
-        val shortName = exprTypename.substringAfterLast('.')
         if (expr !is KtCallExpression) return null
+        val exprTypename = expr.fqTypename(context) ?: return null
+        val shortName = exprTypename.substringAfterLast('.')
         val args = expr.valueArguments
         return when {
             exprTypename in maskUnaryOpTypes -> {
