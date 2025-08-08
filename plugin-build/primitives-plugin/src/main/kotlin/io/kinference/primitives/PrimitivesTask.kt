@@ -11,6 +11,8 @@ import org.gradle.api.provider.Property
 import org.gradle.api.tasks.*
 import org.gradle.work.NormalizeLineEndings
 import org.jetbrains.kotlin.cli.common.config.addKotlinSourceRoot
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.cli.jvm.config.addJvmClasspathRoots
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
@@ -41,6 +43,23 @@ abstract class PrimitivesTask : DefaultTask() {
     @get:Internal
     abstract val primitivesCache: Property<PrimitivesCache>
 
+    private val messageCollector = object : MessageCollector {
+        override fun clear() {}
+
+        override fun hasErrors(): Boolean = false
+
+        override fun report(severity: CompilerMessageSeverity, message: String, location: CompilerMessageSourceLocation?) {
+            when (severity) {
+                CompilerMessageSeverity.STRONG_WARNING -> logger.error("$message: $location")
+                CompilerMessageSeverity.ERROR -> logger.error("$message: $location")
+                CompilerMessageSeverity.INFO -> logger.info(message)
+                CompilerMessageSeverity.WARNING -> Unit
+                else -> logger.debug(message)
+            }
+        }
+    }
+
+
     init {
         group = "generate"
         description = "Generates primitives from sources"
@@ -68,9 +87,9 @@ abstract class PrimitivesTask : DefaultTask() {
                 FileWithCommon(source, isCommon)
             }
 
-        val analyzeFun = when(compilation.get().platformType) {
-            KotlinPlatformType.jvm    -> Analyze::analyzeJvmSources
-            KotlinPlatformType.js     -> Analyze::analyzeJsSources
+        val analyzeFun = when (compilation.get().platformType) {
+            KotlinPlatformType.jvm -> Analyze::analyzeJvmSources
+            KotlinPlatformType.js -> Analyze::analyzeJsSources
             KotlinPlatformType.common -> Analyze::analyzeCommonSources
             else -> error("Unsupported platform type ${compilation.get().platformType}")
         }
@@ -89,11 +108,13 @@ abstract class PrimitivesTask : DefaultTask() {
         val annotated = ktSources.filter { it.isAnnotatedWith<GeneratePrimitives>(result.bindingContext) }
         val notGeneratedYet = annotated.filterNot { it.virtualFilePath in primitivesCache.get().resolvedPaths }
 
+
+
         for (ktFile in notGeneratedYet) {
             val sourceSet = findSourceSetName(ktFile.virtualFilePath)
             val outputDir = generationPath.dir(sourceSet).get().asFile
 
-            PrimitiveGenerator(ktFile, result.bindingContext, outputDir, MessageCollector.NONE, vectorize.get()).generate()
+            PrimitiveGenerator(ktFile, result.bindingContext, outputDir, messageCollector, vectorize.get()).generate()
 
             primitivesCache.get().resolvedPaths.add(ktFile.virtualFilePath)
         }

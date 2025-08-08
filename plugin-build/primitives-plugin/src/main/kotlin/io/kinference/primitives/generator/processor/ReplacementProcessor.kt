@@ -4,6 +4,7 @@ import io.kinference.primitives.annotations.GenerateNameFromPrimitives
 import io.kinference.primitives.annotations.GenerateVector
 import io.kinference.primitives.annotations.MakePublic
 import io.kinference.primitives.generator.*
+import io.kinference.primitives.generator.errors.getLocation
 import io.kinference.primitives.generator.errors.require
 import io.kinference.primitives.types.*
 import io.kinference.primitives.vector.*
@@ -108,7 +109,16 @@ internal class ReplacementProcessor(
         if (!isVectorClass(receiver, context)) return null
 
         val vecProcessor = VectorReplacementProcessor(context, primitive, collector, file)
-        val (vecReplacement, linReplacement, isScalar) = vecProcessor.process(receiver) ?: return null
+        val res = vecProcessor.process(receiver)
+        if (res == null) {
+            collector.report(
+                CompilerMessageSeverity.STRONG_WARNING,
+                "Could not process vectorized expression, the code will not be generated",
+                expr.getLocation()
+            )
+            return ""
+        }
+        val (vecReplacement, linReplacement, isScalar) = res
 
         val toPrimitive = "${toType(primitive)}()"
         val vecLen = "_vecLen_$idx"
@@ -120,6 +130,11 @@ internal class ReplacementProcessor(
             val dest = args[0].text
             val destOffset = args[1].text
             val len = args[2].text
+            val linearCode = """
+                for($vecIdx in 0 until $len) {
+                    ${vecProcessor.linDeclarations}
+                    $dest[$destOffset + $vecIdx] = $linReplacement.$toPrimitive
+               }""".trimIndent()
 
             if (primitive.dataType in DataType.VECTORIZABLE.resolve() && vectorize) return """
                 if($vecEnabled) {
@@ -135,26 +150,26 @@ internal class ReplacementProcessor(
                         $dest[$destOffset + $vecIdx] = $linReplacement.$toPrimitive
                     }
                 }else{
-                    for($vecIdx in 0 until $len) {
-                        ${vecProcessor.linDeclarations}
-                        $dest[$destOffset + $vecIdx] = $linReplacement.$toPrimitive
-                    } 
+                    $linearCode
                }
                 """.trimIndent()
-            else return """
-                for($vecIdx in 0 until $len) {
-                    ${vecProcessor.linDeclarations}
-                    $dest[$destOffset + $vecIdx] = $linReplacement.$toPrimitive
-               }""".trimIndent()
+            else return linearCode
         } else if (callName == "reduce" && args.size == 2) {
             val handle = args[0].text
             val len = args[1].text
 
-            if (VectorReplacementProcessor.isAssoc[handle] != true) return ""
             val neutral = vecProcessor.neutralElement[handle] ?: return ""
 
             val linearOp = VectorReplacementProcessor.binaryLinearReplacements[handle] ?: return ""
             val linAccumulate = linearOp("ret", linReplacement)
+            val linearCode = """
+                var ret = $neutral
+                for($vecIdx in 0 until $len) {
+                    ${vecProcessor.linDeclarations}
+                    ret = $linAccumulate.$toPrimitive
+                }
+                ret.$toPrimitive
+            """.trimIndent()
 
             if (primitive.dataType in DataType.VECTORIZABLE.resolve() && vectorize) {
                 return """{
@@ -174,22 +189,13 @@ internal class ReplacementProcessor(
                         }
                         ret.$toPrimitive
                     }else{
-                        var ret = $neutral
-                        for($vecIdx in 0 until $len) {
-                            ${vecProcessor.linDeclarations}
-                            ret = $linAccumulate.$toPrimitive
-                        }
-                    ret.$toPrimitive}
+                        $linearCode
+                    }
                 }.invoke()
                 """.trimIndent()
             } else {
                 return """{
-                    var ret = $neutral
-                    for($vecIdx in 0 until $len) {
-                        ${vecProcessor.linDeclarations}
-                        ret = $linAccumulate.$toPrimitive
-                    }
-                    ret.$toPrimitive
+                    $linearCode
                 }.invoke()
                 """.trimIndent()
             }

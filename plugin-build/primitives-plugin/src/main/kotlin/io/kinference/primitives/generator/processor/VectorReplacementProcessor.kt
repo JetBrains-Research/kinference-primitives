@@ -1,9 +1,12 @@
 package io.kinference.primitives.generator.processor
 
 import io.kinference.primitives.generator.Primitive
+import io.kinference.primitives.generator.errors.require
 import io.kinference.primitives.generator.fqTypename
 import io.kinference.primitives.generator.initializer
+import io.kinference.primitives.types.DataType
 import io.kinference.primitives.vector.*
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtExpression
@@ -11,6 +14,7 @@ import org.jetbrains.kotlin.psi.KtSimpleNameExpression
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtValueArgument
+import io.kinference.primitives.generator.errors.*
 
 
 internal class VectorReplacementProcessor(
@@ -31,7 +35,7 @@ internal class VectorReplacementProcessor(
             "LOG" to { x: String -> "ln($x)" },
             "SQRT" to { x: String -> "sqrt($x)" },
             "CBRT" to { x: String -> "cbrt($x)" },
-        ).withDefault { null }
+        )
 
         val binaryLinearReplacements = mapOf(
             "ADD" to { x: String, y: String -> "($x + $y)" },
@@ -41,14 +45,7 @@ internal class VectorReplacementProcessor(
             "MAX" to { x: String, y: String -> "maxOf($x, $y)" },
             "MIN" to { x: String, y: String -> "minOf($x, $y)" },
             "POW" to { x: String, y: String -> "($x).pow($y)" },
-        ).withDefault { null }
-
-        val isAssoc = mapOf(
-            "ADD" to true,
-            "MUL" to true,
-            "MIN" to true,
-            "MAX" to true,
-        ).withDefault { false }
+        )
 
         val vectorHandles = mapOf(
             "Add" to "ADD",
@@ -64,21 +61,37 @@ internal class VectorReplacementProcessor(
             "Pow" to "POW",
             "Sqrt" to "SQRT",
             "Cbrt" to "CBRT",
-        ).withDefault { null }
+        )
+
+        val supportedTypes = mapOf(
+            "EXP" to setOf(DataType.FLOAT, DataType.DOUBLE),
+            "LOG" to setOf(DataType.FLOAT, DataType.DOUBLE),
+            "SQRT" to setOf(DataType.FLOAT, DataType.DOUBLE),
+            "CBRT" to setOf(DataType.FLOAT, DataType.DOUBLE),
+        ).withDefault { DataType.ALL.resolve() }
 
         val maskHandles = mapOf(
-            "And" to "AND", "Or" to "OR", "Xor" to "XOR", "Not" to "NOT", "Eq" to "EQ", "Neq" to "NEQ", "LT" to "LT", "LE" to "LE", "GT" to "GT", "GE" to "GE"
-        ).withDefault { null }
+            "And" to "AND",
+            "Or" to "OR",
+            "Xor" to "XOR",
+            "Not" to "NOT",
+            "Eq" to "EQ",
+            "Neq" to "NEQ",
+            "LT" to "LT",
+            "LE" to "LE",
+            "GT" to "GT",
+            "GE" to "GE"
+        )
 
         val maskUnaryReplacement = mapOf(
             "Not" to ({ x: String -> "$x.not()" }),
-        ).withDefault { null }
+        )
 
         val maskBinaryReplacement = mapOf(
             "And" to ({ x: String, y: String -> "($x.and($y)" }),
             "Or" to ({ x: String, y: String -> "$x.or($y)" }),
             "Xor" to ({ x: String, y: String -> "$x.xor($y)" }),
-        ).withDefault { null }
+        )
 
         val comparatorReplacement = mapOf(
             "Eq" to ({ x: String, y: String -> "($x == $y)" }),
@@ -105,35 +118,43 @@ internal class VectorReplacementProcessor(
         "MUL" to "1.${ReplacementProcessor.toType(primitive)}()",
         "MIN" to "${primitive.typeName}.MAX_VALUE",
         "MAX" to "${primitive.typeName}.MIN_VALUE"
-    ).withDefault { null }
+    )
 
     var scalarDeclarations: String = ""
     var vecDeclarations: String = ""
     var linDeclarations: String = ""
     var localVariables: Set<String> = emptySet()
+    var scalarVariables: Set<String> = emptySet()
 
-    private fun processDeclaration(expr: KtExpression?): Triple<String, String, Boolean>? {
+    private fun processSimpleName(expr: KtExpression?): Triple<String, String, Boolean>? {
         if (expr !is KtSimpleNameExpression) return null
         val varName = expr.text
 
         val actualBody = expr.initializer(context)
-        val (vecReplacement, linReplacement, scalar) = process(actualBody) ?: return null
         if (varName !in localVariables) {
-            localVariables = localVariables + varName
-            if (scalar) {
-                scalarDeclarations += "val ${varName}_vec = $vecReplacement\n"
-                scalarDeclarations += "val ${varName}_lin = $linReplacement\n"
-            } else {
-                vecDeclarations += "val ${varName}_vec = $vecReplacement\n"
-                linDeclarations += "val ${varName}_lin = $linReplacement\n"
-            }
+            val success = addVariable(actualBody, varName)
+            if (!success) return null
         }
-        return Triple("${varName}_vec", "${varName}_lin", scalar)
+        return Triple("${varName}_vec", "${varName}_lin", varName in scalarVariables)
+    }
+
+    private fun addVariable(expr: KtExpression?, varName: String): Boolean {
+        val (vecReplacement, linReplacement, scalar) = process(expr) ?: return false
+        localVariables = localVariables + varName
+        if (scalar) {
+            scalarVariables = scalarVariables + varName
+            scalarDeclarations += "val ${varName}_vec = $vecReplacement\n"
+            scalarDeclarations += "val ${varName}_lin = $linReplacement\n"
+        } else {
+            vecDeclarations += "val ${varName}_vec = $vecReplacement\n"
+            linDeclarations += "val ${varName}_lin = $linReplacement\n"
+        }
+        return true
     }
 
     fun process(expr: KtExpression?): Triple<String, String, Boolean>? {
         if (expr !is KtCallExpression) {
-            return processDeclaration(expr)
+            return processSimpleName(expr)
         }
 
         val exprTypename = expr.fqTypename(context) ?: return null
@@ -143,11 +164,27 @@ internal class VectorReplacementProcessor(
         return when (exprTypename) {
             in unaryOpNames -> {
                 val handle = vectorHandles[shortName] ?: return null
+                if (!supportedTypes.getValue(handle).contains(primitive.dataType)) {
+                    collector.report(
+                        CompilerMessageSeverity.STRONG_WARNING,
+                        "$handle operation is not supported for ${primitive.dataType} type",
+                        expr.getLocation()
+                    )
+                    return null
+                }
                 processUnaryOperation(handle, args)
             }
 
             in binaryOpNames -> {
                 val handle = vectorHandles[shortName] ?: return null
+                if (!supportedTypes.getValue(handle).contains(primitive.dataType)) {
+                    collector.report(
+                        CompilerMessageSeverity.STRONG_WARNING,
+                        "$handle operation is not supported for ${primitive.dataType} type",
+                        expr.getLocation()
+                    )
+                    return null
+                }
                 processBinaryOperation(handle, args)
             }
 
@@ -167,9 +204,9 @@ internal class VectorReplacementProcessor(
                     2 -> args[1].text
                     else -> "0"
                 }
-                Triple(
-                    "${vecName}.fromArray($vecSpecies, $src, $offset + _vec_internal_idx)", "$src[$offset + _vec_internal_idx]", false
-                )
+                val vectorized = "${vecName}.fromArray($vecSpecies, $src, $offset + _vec_internal_idx)"
+                val linear = "$src[$offset+_vec_internal_idx]"
+                Triple(vectorized, linear, false)
             }
 
             ifElseType -> processIfElse(args)
@@ -177,7 +214,7 @@ internal class VectorReplacementProcessor(
         }
     }
 
-    fun processUnaryOperation(handle: String, args: List<KtValueArgument>): Triple<String, String, Boolean>? {
+    private fun processUnaryOperation(handle: String, args: List<KtValueArgument>): Triple<String, String, Boolean>? {
         if (args.size != 1 && args.size != 2) return null
         val childExpr = args[0].getArgumentExpression()
         val masked = args.size == 2
@@ -198,7 +235,7 @@ internal class VectorReplacementProcessor(
         return Triple(vectorized, linear, isScalar)
     }
 
-    fun processBinaryOperation(handle: String, args: List<KtValueArgument>): Triple<String, String, Boolean>? {
+    private fun processBinaryOperation(handle: String, args: List<KtValueArgument>): Triple<String, String, Boolean>? {
         if (args.size != 2 && args.size != 3) return null
         val masked = args.size == 3
         val leftExpr = args[0].getArgumentExpression()
@@ -225,7 +262,7 @@ internal class VectorReplacementProcessor(
         return Triple(vectorized, linear, isScalar)
     }
 
-    fun processIfElse(args: List<KtValueArgument>): Triple<String, String, Boolean>? {
+    private fun processIfElse(args: List<KtValueArgument>): Triple<String, String, Boolean>? {
         if (args.size != 3) return null
         val mask = args[0].getArgumentExpression() ?: return null
         val left = args[1].getArgumentExpression() ?: return null
@@ -240,14 +277,16 @@ internal class VectorReplacementProcessor(
         return Triple(vectorized, linear, isScalar)
     }
 
-
-    fun processMask(expr: KtExpression?): Pair<String, String>? {
-        if (expr !is KtCallExpression) return null
+    private fun processMask(expr: KtExpression?): Pair<String, String>? {
+        if (expr !is KtCallExpression) {
+            val (vecReplacement, linReplacement, _) = processSimpleName(expr) ?: return null
+            return Pair(vecReplacement, linReplacement)
+        }
         val exprTypename = expr.fqTypename(context) ?: return null
         val handle = maskHandles[exprTypename.substringAfterLast('.')] ?: return null
         val args = expr.valueArguments
-        return when {
-            exprTypename in maskUnaryOpTypes -> {
+        return when (exprTypename) {
+            in maskUnaryOpTypes -> {
                 if (args.size != 1) return null
                 val child = args[0].getArgumentExpression() ?: return null
                 val (vecReplacement, linReplacement) = processMask(child) ?: return null
@@ -258,7 +297,7 @@ internal class VectorReplacementProcessor(
                 )
             }
 
-            exprTypename in maskBinaryOpTypes -> {
+            in maskBinaryOpTypes -> {
                 if (args.size != 2) return null
                 val left = args[0].getArgumentExpression() ?: return null
                 val (leftVecReplacement, leftLinReplacement) = processMask(left) ?: return null
@@ -270,7 +309,7 @@ internal class VectorReplacementProcessor(
                 )
             }
 
-            exprTypename in comparatorTypes -> {
+            in comparatorTypes -> {
                 if (args.size != 2) return null
                 val leftExpr = args[0].getArgumentExpression() ?: return null
                 val rightExpr = args[1].getArgumentExpression() ?: return null
@@ -278,9 +317,9 @@ internal class VectorReplacementProcessor(
                 val (rightVector, rightLinear, rightScalar) = process(rightExpr) ?: return null
                 val linear = comparatorReplacement[handle]?.invoke(leftLinear, rightLinear) ?: return null
                 val vectorized = """
-                    $leftVector
-                    .compare(VectorOperators.$handle, $rightVector)
-                """.trimIndent()
+                        $leftVector
+                        .compare(VectorOperators.$handle, $rightVector)
+                    """.trimIndent()
                 Pair(vectorized, linear)
             }
 
