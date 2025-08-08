@@ -31,16 +31,18 @@ enum class DataType {
     BOOLEAN,
 
     ALL,
-    NUMBER;
+    NUMBER,
+    VECTORIZABLE;
 
     /**
      * Resolve DataType into actual primitives -- would flatten groups into collection of primitives.
      * Primitives would remain the same
      */
     fun resolve(): Set<DataType> {
-        return when(this) {
+        return when (this) {
             ALL -> setOf(BYTE, SHORT, INT, LONG, UBYTE, USHORT, UINT, ULONG, FLOAT, DOUBLE, BOOLEAN)
             NUMBER -> setOf(BYTE, SHORT, INT, LONG, UBYTE, USHORT, UINT, ULONG, FLOAT, DOUBLE)
+            VECTORIZABLE -> setOf(BYTE, SHORT, INT, LONG, FLOAT, DOUBLE)
             else -> setOf(this)
         }
     }

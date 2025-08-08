@@ -1,10 +1,13 @@
 package io.kinference.primitives.generator.processor
 
 import io.kinference.primitives.annotations.GenerateNameFromPrimitives
+import io.kinference.primitives.annotations.GenerateVector
 import io.kinference.primitives.annotations.MakePublic
 import io.kinference.primitives.generator.*
+import io.kinference.primitives.generator.errors.getLocation
 import io.kinference.primitives.generator.errors.require
 import io.kinference.primitives.types.*
+import io.kinference.primitives.vector.*
 import io.kinference.primitives.utils.psi.forced
 import io.kinference.primitives.utils.psi.isAnnotatedWith
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
@@ -12,15 +15,19 @@ import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.com.intellij.openapi.util.Key
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.com.intellij.psi.impl.source.tree.LeafPsiElement
+import org.jetbrains.kotlin.js.descriptorUtils.getKotlinTypeFqName
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.isExtensionDeclaration
 import org.jetbrains.kotlin.psi.psiUtil.visibilityModifier
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
+import org.jetbrains.kotlin.types.typeUtil.supertypes
 
-internal class ReplacementProcessor(private val context: BindingContext, private val collector: MessageCollector) {
+internal class ReplacementProcessor(
+    private val context: BindingContext, private val collector: MessageCollector, private val file: KtFile, private val vectorize: Boolean = true
+) {
     companion object {
-        private fun toType(primitive: Primitive<*, *>): String {
+        internal fun toType(primitive: Primitive<*, *>): String {
             return when (primitive.dataType) {
                 DataType.BYTE -> "toInt().toByte"
                 DataType.SHORT -> "toInt().toShort"
@@ -42,19 +49,21 @@ internal class ReplacementProcessor(private val context: BindingContext, private
 
             (PrimitiveArray::class.qualifiedName!!) to { it.arrayTypeName },
             (PrimitiveArray::class.qualifiedName!! + ".<init>") to { it.arrayTypeName },
-            (PrimitiveArray::class.qualifiedName!! + ".Companion") to { it.arrayTypeName }
-        )
+            (PrimitiveArray::class.qualifiedName!! + ".Companion") to { it.arrayTypeName })
+
     }
 
 
     fun getReplacement(klass: KtClassOrObject, primitive: Primitive<*, *>): String? {
-        if (klass.isAnnotatedWith<GenerateNameFromPrimitives>(context)) {
-            return klass.specialize(primitive, collector)
+        if (!klass.isAnnotatedWith<GenerateNameFromPrimitives>(context)) {
+            collector.require(CompilerMessageSeverity.WARNING, klass, !klass.isTopLevel()) {
+                "Class is not annotated with ${GenerateNameFromPrimitives::class.simpleName}, so its name would not be specialized. It may lead to redeclaration compile error."
+            }
+            return null
         }
-        collector.require(CompilerMessageSeverity.WARNING, klass, !klass.isTopLevel()) {
-            "Class is not annotated with ${GenerateNameFromPrimitives::class.simpleName}, so its name would not be specialized. It may lead to redeclaration compile error."
-        }
-        return null
+
+        return klass.specialize(primitive, collector)
+
     }
 
     fun getReplacement(function: KtNamedFunction, primitive: Primitive<*, *>): String? {
@@ -77,17 +86,123 @@ internal class ReplacementProcessor(private val context: BindingContext, private
                 defaultReplacements[type]!!.invoke(primitive)
             }
 
-            (target.isKtClassOrObject() && target.containingDeclaration!!.isAnnotatedWith<GenerateNameFromPrimitives>()) ||
-            (target.isNamedFunction() || target.isKtClassOrObject()) && target.isAnnotatedWith<GenerateNameFromPrimitives>() -> {
+            (target.isKtClassOrObject() && target.containingDeclaration!!.isAnnotatedWith<GenerateNameFromPrimitives>()) || (target.isNamedFunction() || target.isKtClassOrObject()) && target.isAnnotatedWith<GenerateNameFromPrimitives>() -> {
                 expression.text.specialize(primitive)
             }
 
             (target.isCompanion() || target.isConstructor()) && target.containingDeclaration!!.isAnnotatedWith<GenerateNameFromPrimitives>() -> {
                 name.specialize(primitive)
             }
+
             else -> null
         }
     }
+
+    fun getReplacement(expr: KtDotQualifiedExpression, primitive: Primitive<*, *>, idx: Int): String? {
+        val receiver = expr.receiverExpression
+        val selector = expr.selectorExpression ?: return null
+        if (selector !is KtCallExpression) return null
+
+        val args = selector.valueArguments
+        val callName = selector.calleeExpression?.text ?: return null
+
+        if (!isVectorClass(receiver, context)) return null
+
+        val vecProcessor = VectorReplacementProcessor(context, primitive, collector, file)
+        val res = vecProcessor.process(receiver)
+        if (res == null) {
+            collector.report(
+                CompilerMessageSeverity.STRONG_WARNING,
+                "Could not process vectorized expression, the code will not be generated",
+                expr.getLocation()
+            )
+            return ""
+        }
+        val (vecReplacement, linReplacement, isScalar) = res
+
+        val toPrimitive = "${toType(primitive)}()"
+        val vecLen = "_vecLen_$idx"
+        val vecEnd = "_vecEnd_$idx"
+        val vecIdx = "_vec_internal_idx"
+        val vecEnabled = "isModuleLoaded"
+
+        if (callName == "into" && args.size == 3) {
+            val dest = args[0].text
+            val destOffset = args[1].text
+            val len = args[2].text
+            val linearCode = """
+                for($vecIdx in 0 until $len) {
+                    ${vecProcessor.linDeclarations}
+                    $dest[$destOffset + $vecIdx] = $linReplacement.$toPrimitive
+               }""".trimIndent()
+
+            if (primitive.dataType in DataType.VECTORIZABLE.resolve() && vectorize) return """
+                if($vecEnabled) {
+                    val $vecLen = ${vecProcessor.vecSpecies}.length()
+                    val $vecEnd = $len - ($len % $vecLen)
+                    ${vecProcessor.scalarDeclarations}
+                    for ($vecIdx in 0 until $vecEnd step $vecLen) {
+                        ${vecProcessor.vecDeclarations}
+                        $vecReplacement.intoArray($dest, $destOffset + _vec_internal_idx)
+                    }
+                    for($vecIdx in $vecEnd until $len) {
+                        ${vecProcessor.linDeclarations}
+                        $dest[$destOffset + $vecIdx] = $linReplacement.$toPrimitive
+                    }
+                }else{
+                    $linearCode
+               }
+                """.trimIndent()
+            else return linearCode
+        } else if (callName == "reduce" && args.size == 2) {
+            val handle = args[0].text
+            val len = args[1].text
+
+            val neutral = vecProcessor.neutralElement[handle] ?: return ""
+
+            val linearOp = VectorReplacementProcessor.binaryLinearReplacements[handle] ?: return ""
+            val linAccumulate = linearOp("ret", linReplacement)
+            val linearCode = """
+                var ret = $neutral
+                for($vecIdx in 0 until $len) {
+                    ${vecProcessor.linDeclarations}
+                    ret = $linAccumulate.$toPrimitive
+                }
+                ret.$toPrimitive
+            """.trimIndent()
+
+            if (primitive.dataType in DataType.VECTORIZABLE.resolve() && vectorize) {
+                return """{
+                    if($vecEnabled) {
+                        val $vecLen = ${vecProcessor.vecSpecies}.length()
+                        val $vecEnd = $len - ($len % $vecLen)
+                        var accumulator = ${vecProcessor.vecName}.broadcast(${vecProcessor.vecSpecies}, $neutral)
+                        ${vecProcessor.scalarDeclarations}
+                        for ($vecIdx in 0 until $vecEnd step $vecLen) {
+                            ${vecProcessor.vecDeclarations}
+                            accumulator = accumulator.lanewise(VectorOperators.$handle, $vecReplacement)
+                        }
+                        var ret = accumulator.reduceLanes(VectorOperators.$handle)
+                        for($vecIdx in $vecEnd until $len) {
+                            ${vecProcessor.linDeclarations}
+                            ret = $linAccumulate.$toPrimitive
+                        }
+                        ret.$toPrimitive
+                    }else{
+                        $linearCode
+                    }
+                }.invoke()
+                """.trimIndent()
+            } else {
+                return """{
+                    $linearCode
+                }.invoke()
+                """.trimIndent()
+            }
+
+        } else return ""
+    }
+
 
     fun shouldChangeVisibilityModifier(list: KtModifierList): Boolean {
         val owner = list.owner

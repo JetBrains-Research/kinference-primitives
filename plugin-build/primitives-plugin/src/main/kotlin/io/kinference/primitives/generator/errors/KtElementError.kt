@@ -21,7 +21,7 @@ internal fun MessageCollector.require(severity: CompilerMessageSeverity, element
     }
 }
 
-private fun KtElement.getLocation(): CompilerMessageSourceLocation? {
+fun KtElement.getLocation(): CompilerMessageSourceLocation? {
     val lineToColumn = if (this !is KtFile) StringUtil.offsetToLineColumn(containingKtFile.text, textOffset) else null
     return CompilerMessageLocation.create(containingKtFile.virtualFilePath, lineToColumn?.line ?: 1, lineToColumn?.line ?: 1, null)
 }

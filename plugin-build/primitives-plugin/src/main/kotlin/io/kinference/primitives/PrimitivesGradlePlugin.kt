@@ -12,7 +12,6 @@ class PrimitivesGradlePlugin : Plugin<Project> {
 
         val primitivesExt = project.extensions.create(extensionName, PrimitivesExtension::class.java)
 
-
         val primitivesCache = project.gradle.sharedServices.registerIfAbsent("${project.path}_${primitivesCacheName}", PrimitivesCache::class.java) {
             it.maxParallelUsages.set(1)
         }
@@ -20,6 +19,7 @@ class PrimitivesGradlePlugin : Plugin<Project> {
         val generalPrimitivesTask = project.tasks.register(primitivesTaskName) {
             it.group = "generate"
         }
+
 
         kotlinExt.sourceSets.all { sourceSet ->
             sourceSet.kotlin.srcDir(primitivesExt.generationPath.dir(sourceSet.name))
@@ -40,6 +40,7 @@ class PrimitivesGradlePlugin : Plugin<Project> {
                 primitiveTask.inputFiles.from(compileTask.sources)
                 primitiveTask.libraries.from(compileTask.libraries)
                 primitiveTask.compilation.set(compilation)
+                primitiveTask.vectorize.set(primitivesExt.vectorize)
             }
 
             compileTask.dependsOn(primitivesTask)
