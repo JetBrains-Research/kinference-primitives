@@ -40,7 +40,6 @@ class PrimitivesGradlePlugin : Plugin<Project> {
                 primitiveTask.inputFiles.from(compileTask.sources)
                 primitiveTask.libraries.from(compileTask.libraries)
                 primitiveTask.compilation.set(compilation)
-                primitiveTask.vectorize.set(primitivesExt.vectorize)
             }
 
             compileTask.dependsOn(primitivesTask)

@@ -12,8 +12,6 @@ open class PrimitivesExtension @Inject constructor(
 ) {
     private val objects = project.objects
 
-    var vectorize: Boolean = false
-
     val generationPath: DirectoryProperty = objects.directoryProperty().convention(
         project.layout.buildDirectory.dir("generated/primitives")
     )

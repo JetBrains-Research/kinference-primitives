@@ -26,7 +26,6 @@ internal class PrimitiveGenerator(
     private val context: BindingContext,
     private val output: File,
     private val collector: MessageCollector,
-    private val vectorize: Boolean = false
 ) {
 
     private data class PrimitiveContext(val type1: Primitive<*, *>? = null, val type2: Primitive<*, *>? = null, val type3: Primitive<*, *>? = null)

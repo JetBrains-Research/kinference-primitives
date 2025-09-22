@@ -48,11 +48,10 @@ internal class GenerationVisitor(
     KtDefaultVisitor() {
     private data class PrimitiveContext(val type1: Primitive<*, *>? = null, val type2: Primitive<*, *>? = null, val type3: Primitive<*, *>? = null)
 
-    private val vectorize = true
     private val builder = StringBuilder()
     fun text() = builder.toString()
     val removalProcessor = RemovalProcessor(context)
-    val replacementProcessor = ReplacementProcessor(context, collector, file, vectorize)
+    val replacementProcessor = ReplacementProcessor(context, collector, file)
     private var currentPrimitive = primitive
     private var vecCount = 0
 
@@ -77,7 +76,7 @@ internal class GenerationVisitor(
     }
 
     override fun visitImportList(importList: KtImportList) {
-        if (file.isAnnotatedWith<GenerateVector>(context) && primitive.dataType in DataType.VECTORIZABLE.resolve() && vectorize) {
+        if (file.isAnnotatedWith<GenerateVector>(context) && primitive.dataType in DataType.VECTORIZABLE.resolve()) {
             builder.appendLine("import io.kinference.ndarray.VecUtils.isModuleLoaded")
             builder.appendLine("import jdk.incubator.vector.*")
         }

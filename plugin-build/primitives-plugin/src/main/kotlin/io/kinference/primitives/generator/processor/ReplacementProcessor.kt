@@ -24,7 +24,7 @@ import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
 import org.jetbrains.kotlin.types.typeUtil.supertypes
 
 internal class ReplacementProcessor(
-    private val context: BindingContext, private val collector: MessageCollector, private val file: KtFile, private val vectorize: Boolean = true
+    private val context: BindingContext, private val collector: MessageCollector, private val file: KtFile
 ) {
     companion object {
         internal fun toType(primitive: Primitive<*, *>): String {
@@ -136,7 +136,7 @@ internal class ReplacementProcessor(
                     $dest[$destOffset + $vecIdx] = $linReplacement.$toPrimitive
                }""".trimIndent()
 
-            if (primitive.dataType in DataType.VECTORIZABLE.resolve() && vectorize) return """
+            if (primitive.dataType in DataType.VECTORIZABLE.resolve()) return """
                 if($vecEnabled) {
                     val $vecLen = ${vecProcessor.vecSpecies}.length()
                     val $vecEnd = $len - ($len % $vecLen)
@@ -171,7 +171,7 @@ internal class ReplacementProcessor(
                 ret.$toPrimitive
             """.trimIndent()
 
-            if (primitive.dataType in DataType.VECTORIZABLE.resolve() && vectorize) {
+            if (primitive.dataType in DataType.VECTORIZABLE.resolve()) {
                 return """{
                     if($vecEnabled) {
                         val $vecLen = ${vecProcessor.vecSpecies}.length()
