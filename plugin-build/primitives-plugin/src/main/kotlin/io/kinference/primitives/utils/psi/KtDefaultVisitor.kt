@@ -2,6 +2,7 @@ package io.kinference.primitives.utils.psi
 
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.com.intellij.psi.impl.source.tree.LeafPsiElement
+import org.jetbrains.kotlin.psi.KtTreeVisitorVoid
 import org.jetbrains.kotlin.psi.KtVisitorVoid
 
 internal abstract class KtDefaultVisitor : KtVisitorVoid() {

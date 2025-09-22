@@ -13,3 +13,6 @@ kotlin {
     }
 }
 
+repositories {
+    mavenCentral()
+}

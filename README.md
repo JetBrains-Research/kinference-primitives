@@ -65,3 +65,6 @@ This code would generate specializations for Float and Int types via replacement
 of `PrimitiveType` with corresponding type (Float or Int). Also, note that standard functions, like MAX_VALUE, are available for `PrimitiveType` like it would
 be a real `Number`.
 
+Version 2.1.0 adds the possibility of generating vectorized code using
+Java's [vector API](https://download.java.net/java/early_access/jdk25/docs/api/jdk.incubator.vector/module-summary.html).
+Currently, this only works inside of KInference and in combination with primitive specialization.
